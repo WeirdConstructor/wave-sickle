@@ -1,51 +1,4 @@
-static FAST_COS_TAB_LOG2_SIZE : usize = 10;
-static FAST_COS_TAB_SIZE : usize      = 1 << FAST_COS_TAB_LOG2_SIZE; // =1024
-static mut FAST_COS_TAB : [f64; 1024] = [0.0; 1024];
-
-fn init_cos_tab() {
-    for i in 0..FAST_COS_TAB_SIZE {
-        let phase : f64 =
-            (i as f64)
-            * ((std::f64::consts::PI * 2.0)
-               / (FAST_COS_TAB_SIZE as f64));
-        unsafe {
-            // XXX: note: mutable statics can be mutated by multiple
-            //      threads: aliasing violations or data races
-            //      will cause undefined behavior
-            FAST_COS_TAB[i] = phase.cos();
-        }
-    }
-}
-
-fn fast_cos(mut x: f64) -> f64 {
-    x = x.abs(); // cosine is symmetrical around 0, let's get rid of negative values
-
-    // normalize range from 0..2PI to 1..2
-    let phase_scale  = 1.0 / (std::f64::consts::PI * 2.0);
-    let phase        = 1.0 + x * phase_scale;
-
-    let phase_as_u64 = phase.to_bits();
-    let exponent     = (phase_as_u64 >> 52) - 1023;
-
-    let fract_bits   = 32 - FAST_COS_TAB_LOG2_SIZE;
-    let fract_scale  = 1 << fract_bits;
-    let fract_mask   = fract_scale - 1;
-
-    let significand  = ((phase_as_u64 << exponent) >> (52 - 32)) as u32;
-    let index        = significand >> fract_bits;
-    let fract : i32  = (significand as i32) & fract_mask;
-
-    unsafe {
-        // XXX: note: mutable statics can be mutated by multiple
-        //      threads: aliasing violations or data races
-        //      will cause undefined behavior
-        let left         = FAST_COS_TAB[index as usize];
-        let right        = FAST_COS_TAB[(index as usize + 1) % 1024];
-        let fract_mix    = (fract as f64) * (1.0 / (fract_scale as f64));
-
-        return left + (right - left) * fract_mix;
-    }
-}
+mod helpers;
 
 /*
 
@@ -148,7 +101,7 @@ fn audio() {
                     let mut last = 0.0;
                     for elem in buffer.iter_mut() {
                         let u = next_xoroshiro128(&mut ss);
-                        *elem = 0.01 * fast_cos(phase) as f32;
+                        *elem = 0.01 * helpers::fast_cos(phase) as f32;
                         phase += 0.01;
                         last = *elem;
                     }
@@ -165,7 +118,7 @@ fn audio() {
 
 
 fn main() {
-    init_cos_tab();
+    helpers::init_cos_tab();
     audio();
     println!("TST");
     loop { }
