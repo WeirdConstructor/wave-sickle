@@ -30,15 +30,10 @@ fn audio() {
         let host = cpal::default_host();
         let event_loop = host.event_loop();
         let device = host.default_output_device().expect("no output device available");
-        let mut supported_formats_range = device.supported_output_formats()
-            .expect("error while querying formats");
-        let format = supported_formats_range.next()
-            .expect("no supported format?!")
-            .with_max_sample_rate();
+        let format = device.default_output_format().expect("proper default format");
         println!("FORMAT: {:?}", format);
         let stream_id = event_loop.build_output_stream(&device, &format).unwrap();
         event_loop.play_stream(stream_id).expect("failed to play_stream");
-
 
         let a : u64 = 0x193a6754a8a7d469;
         let b : u64 = 0x97830e05113ba7bb;
