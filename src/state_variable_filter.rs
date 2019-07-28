@@ -1,3 +1,4 @@
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum FilterType {
     Lowpass,
     Highpass,
@@ -26,5 +27,17 @@ impl From<FilterType> for f32 {
             FilterType::Bandpass => 2.0,
             FilterType::Notch    => 3.0,
         }
+    }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_into_and_from() {
+        let x : f32 = FilterType::Bandpass.into();
+        assert_eq!(x, 2.0);
+        let y : FilterType = (2.0).into();
+        assert_eq!(y, FilterType::Bandpass);
     }
 }
