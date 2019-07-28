@@ -1,3 +1,84 @@
+static FAST_COS_TAB_LOG2_SIZE : usize = 10;
+static FAST_COS_TAB_SIZE : usize      = 1 << FAST_COS_TAB_LOG2_SIZE; // =1024
+static mut FAST_COS_TAB : [f64; 1024] = [0.0; 1024];
+
+fn init_cos_tab() {
+    for i in 0..FAST_COS_TAB_SIZE {
+        let phase : f64 =
+            (i as f64)
+            * ((std::f64::consts::PI * 2.0)
+               / (FAST_COS_TAB_SIZE as f64));
+        unsafe {
+            // XXX: note: mutable statics can be mutated by multiple
+            //      threads: aliasing violations or data races
+            //      will cause undefined behavior
+            FAST_COS_TAB[i] = phase.cos();
+        }
+    }
+}
+
+fn fast_cos(mut x: f64) -> f64 {
+    x = x.abs(); // cosine is symmetrical around 0, let's get rid of negative values
+
+    // normalize range from 0..2PI to 1..2
+    let phase_scale  = 1.0 / (std::f64::consts::PI * 2.0);
+    let phase        = 1.0 + x * phase_scale;
+
+    let phase_as_u64 = phase.to_bits();
+    let exponent     = (phase_as_u64 >> 52) - 1023;
+
+    let fract_bits   = 32 - FAST_COS_TAB_LOG2_SIZE;
+    let fract_scale  = 1 << fract_bits;
+    let fract_mask   = fract_scale - 1;
+
+    let significand  = ((phase_as_u64 << exponent) >> (52 - 32)) as u32;
+    let index        = significand >> fract_bits;
+    let fract : i32  = (significand as i32) & fract_mask;
+
+    unsafe {
+        // XXX: note: mutable statics can be mutated by multiple
+        //      threads: aliasing violations or data races
+        //      will cause undefined behavior
+        let left         = FAST_COS_TAB[index as usize];
+        let right        = FAST_COS_TAB[(index as usize + 1) % 1024];
+        let fract_mix    = (fract as f64) * (1.0 / (fract_scale as f64));
+
+        return left + (right - left) * fract_mix;
+    }
+}
+
+/*
+
+double Helpers::FastCos(double x)
+{
+    // normalize range from 0..2PI to 1..2
+    const auto phaseScale = 1.0 / (M_PI * 2);
+    auto phase = 1.0 + x * phaseScale;
+
+    auto phaseAsInt = *reinterpret_cast<unsigned long long *>(&phase);
+    int exponent = (phaseAsInt >> 52) - 1023;
+
+    const auto fractBits = 32 - fastCosTabLog2Size;
+    const auto fractScale = 1 << fractBits;
+    const auto fractMask = fractScale - 1;
+
+    auto significand = (unsigned int)((phaseAsInt << exponent) >> (52 - 32));
+    auto index = significand >> fractBits;
+    int fract = significand & fractMask;
+
+    auto left = fastCosTab[index];
+    auto right = fastCosTab[index + 1];
+
+    auto fractMix = fract * (1.0 / fractScale);
+    return left + (right - left) * fractMix;
+}
+*/
+
+
+
+
+
+
 // Taken from xoroshiro128 crate under MIT License
 // Implemented by Matthew Scharley (Copyright 2016)
 // https://github.com/mscharley/rust-xoroshiro128
@@ -39,6 +120,7 @@ fn audio() {
         let b : u64 = 0x97830e05113ba7bb;
         let mut ss = [a, b];
 
+        let mut phase : f64 = 0.0;
         use cpal::{StreamData, UnknownTypeOutputBuffer};
         event_loop.run(move |stream_id, stream_result| {
             let stream_data = match stream_result {
@@ -47,7 +129,6 @@ fn audio() {
                     eprintln!("an error occurred on stream {:?}: {}", stream_id, err);
                     return;
                 }
-                _ => return,
             };
 
             match stream_data {
@@ -67,7 +148,8 @@ fn audio() {
                     let mut last = 0.0;
                     for elem in buffer.iter_mut() {
                         let u = next_xoroshiro128(&mut ss);
-                        *elem = 0.01 * u64_to_open01(u) as f32;
+                        *elem = 0.01 * fast_cos(phase) as f32;
+                        phase += 0.01;
                         last = *elem;
                     }
                     println!("FOFOE5 {}", last);
@@ -83,6 +165,7 @@ fn audio() {
 
 
 fn main() {
+    init_cos_tab();
     audio();
     println!("TST");
     loop { }
