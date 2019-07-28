@@ -1,0 +1,15 @@
+[package]
+name         = "wave-sicle"
+version      = "0.1.0"
+authors      = ["Weird Constructor <weirdconstructor@gmail.com>"]
+license      = "GPL-3.0-or-later"
+edition      = "2018"
+description  = "wave-sicle is a port attempt of WaveSabre (by logicoma) to Rust"
+repository   = "https://github.com/WeirdConstructor/wave-sicle"
+readme       = "README.md"
+keywords     = ["audio", "sound", "synth", "synthesizer"]
+categories   = ["audio", "multimedia"]
+exclude      = ["res/*"]
+
+[dependencies]
+cpal = "0.10.0"
