@@ -1,9 +1,11 @@
-static FAST_COS_TAB_LOG2_SIZE : usize = 10;
-static FAST_COS_TAB_SIZE : usize      = 1 << FAST_COS_TAB_LOG2_SIZE; // =1024
-static mut FAST_COS_TAB : [f64; 1024] = [0.0; 1024];
+#![macro_use]
+
+static FAST_COS_TAB_LOG2_SIZE : usize = 9;
+static FAST_COS_TAB_SIZE : usize      = 1 << FAST_COS_TAB_LOG2_SIZE; // =512
+static mut FAST_COS_TAB : [f64; 513] = [0.0; 513];
 
 pub fn init_cos_tab() {
-    for i in 0..FAST_COS_TAB_SIZE {
+    for i in 0..(FAST_COS_TAB_SIZE+1) {
         let phase : f64 =
             (i as f64)
             * ((std::f64::consts::PI * 2.0)
@@ -18,7 +20,7 @@ pub fn init_cos_tab() {
 }
 
 pub fn fast_sin(x: f64) -> f64 {
-    fast_cos(x - std::f64::consts::PI)
+    fast_cos(x - (std::f64::consts::PI / 2.0))
 }
 
 pub fn square_135(phase: f64) -> f64 {
@@ -49,26 +51,37 @@ pub fn fast_cos(mut x: f64) -> f64 {
     x = x.abs(); // cosine is symmetrical around 0, let's get rid of negative values
 
     // normalize range from 0..2PI to 1..2
-    let phase_scale  = 1.0 / (std::f64::consts::PI * 2.0);
-    let phase        = 1.0 + x * phase_scale;
+    let phase_scale  = 1.0_f64 / (std::f64::consts::PI * 2.0_f64);
+    let phase        = 1.0_f64 + x * phase_scale;
 
-    let phase_as_u64 = phase.to_bits();
+//    println!("phase = {}", phase);
+    let phase_as_u64 : u64 = unsafe { std::mem::transmute::<f64, u64>(phase) };//  phase.to_bits();
+//    println!("pasi  ={:b}", phase_as_u64);
     let exponent     = (phase_as_u64 >> 52) - 1023;
+//    println!("EXP={}", exponent);
 
-    let fract_bits   = 32 - FAST_COS_TAB_LOG2_SIZE;
+    let fract_bits : u32  = 32 - FAST_COS_TAB_LOG2_SIZE as u32;
+//    println!("bits ={:b}", fract_bits);
     let fract_scale  = 1 << fract_bits;
+//    println!("scale={:b}", fract_scale);
     let fract_mask   = fract_scale - 1;
+//    println!("mask ={:b}", fract_mask);
+
 
     let significand  = ((phase_as_u64 << exponent) >> (52 - 32)) as u32;
+//    println!("sign  ={:b}", significand);
     let index        = significand >> fract_bits;
+//    println!("index ={:b}", index);
     let fract : i32  = (significand as i32) & fract_mask;
+//    println!("fract ={:b}", fract);
 
+//    println!("FRSC x={} idx={} frct={}", x, index, fract);
     unsafe {
         // XXX: note: mutable statics can be mutated by multiple
         //      threads: aliasing violations or data races
         //      will cause undefined behavior
         let left         = FAST_COS_TAB[index as usize];
-        let right        = FAST_COS_TAB[(index as usize + 1) % 1024];
+        let right        = FAST_COS_TAB[index as usize + 1];
         let fract_mix    = (fract as f64) * (1.0 / (fract_scale as f64));
 
         return left + (right - left) * fract_mix;
@@ -205,3 +218,28 @@ fn resonance_to_param(resonance: f32) -> f32 {
 		return (float)voiceMode / 1.0f;
 	}
 */
+
+#[macro_export]
+macro_rules! recalc_setter {
+    ($fun_name: ident, $g: ident, $typ: ident) => {
+        pub fn $fun_name(&mut self, v: $typ) {
+            if self.$g == v { return; }
+            self.$g = v;
+            self.recalculate = true;
+        }
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sin_cos() {
+        init_cos_tab();
+
+//        assert_eq!(fast_sin(std::f64::consts::PI), -1.0);
+//        assert_eq!(fast_sin(std::f64::consts::PI * 2.0), 1.0);
+//        assert_eq!(fast_cos(std::f64::consts::PI), -1.0);
+//        assert_eq!(fast_cos(std::f64::consts::PI * 2.0), 1.0);
+    }
+}

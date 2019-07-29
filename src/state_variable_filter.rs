@@ -1,7 +1,7 @@
 use crate::helpers::*;
 use crate::parameters::*;
 
-struct Filter {
+pub struct Filter {
     sample_rate: f64,
     recalculate: bool,
     filter_type: FilterType,
@@ -14,12 +14,12 @@ struct Filter {
 }
 
 impl Filter {
-    fn new(sample_rate: f64) -> Self {
+    pub fn new(sample_rate: f64) -> Self {
         Filter {
             sample_rate,
             recalculate: true,
             filter_type: FilterType::Lowpass,
-            freq:        20.0,
+            freq:        1000.0,
             q:           1.0,
             last_input:  0.0,
             low:         0.0,
@@ -28,11 +28,11 @@ impl Filter {
         }
     }
 
-    fn set_parameter(p: Parameter) -> Result<(),()> {
-        Ok(())
-    }
+    recalc_setter!(set_type,    filter_type, FilterType);
+    recalc_setter!(set_q,       q,           f32);
+    recalc_setter!(set_freq,    freq,        f32);
 
-    fn next(&mut self, input: f32) -> f32 {
+    pub fn next(&mut self, input: f32) -> f32 {
         if self.recalculate {
             self.f = 1.5_f32
                      * (fast_sin(
@@ -44,17 +44,19 @@ impl Filter {
         }
 
         let ret =
-             (self.run(self.last_input + input) / 2.0)
-            + self.run(input)                   / 2.0;
+            ((self.run(self.last_input + input) / 2.0) + self.run(input))
+            / 2.0;
         self.last_input = input;
         ret
     }
 
     fn run(&mut self, input: f32) -> f32 {
-        self.low = self.low + self.f * self.band;
+//        println!("SELFF: {} <- {} {} {}", input, self.f, self.low, self.band);
+        self.low += self.f * self.band;
         let high = self.q * (input - self.band) - self.low;
-        self.band = self.band + self.f * high;
+        self.band += self.f * high;
 
+//        println!("SELFF: {} <- {} {} {} {}", input, self.f, self.low, self.band, high);
         match self.filter_type {
             FilterType::Lowpass  => self.low,
             FilterType::Highpass => high,

@@ -75,6 +75,18 @@ fn audio() {
         let b : u64 = 0x97830e05113ba7bb;
         let mut ss = [a, b];
 
+        let sample_rate = if let cpal::SampleRate(r) = format.sample_rate {
+            r
+        } else {
+            44100
+        };
+
+        println!("SMPL: {}", sample_rate);
+
+        let mut fl = state_variable_filter::Filter::new(sample_rate as f64);
+        fl.set_q(1.0);
+        fl.set_type(parameters::FilterType::Bandpass);
+
         let mut phase : f64 = 0.0;
         use cpal::{StreamData, UnknownTypeOutputBuffer};
         event_loop.run(move |stream_id, stream_result| {
@@ -101,13 +113,15 @@ fn audio() {
                 },
                 StreamData::Output { buffer: UnknownTypeOutputBuffer::F32(mut buffer) } => {
                     let mut last = 0.0;
+                    fl.set_freq(200.0 + (helpers::fast_sin(phase) + 1.0) as f32 *  200.0);
+                    phase += 0.01;
                     for elem in buffer.iter_mut() {
                         let u = next_xoroshiro128(&mut ss);
-                        *elem = 0.01 * helpers::fast_cos(phase) as f32;
-                        phase += 0.01;
+                        *elem = 0.1 * fl.next(u64_to_open01(u) as f32);
+//                        *elem = 0.01 * helpers::fast_sin(phase) as f32;
                         last = *elem;
                     }
-                    println!("FOFOE5 {}", last);
+//                    println!("FOFOE5 {}", last);
                 },
                 _ => (),
             }
