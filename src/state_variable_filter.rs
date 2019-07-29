@@ -19,7 +19,7 @@ impl Filter {
             sample_rate,
             recalculate: true,
             filter_type: FilterType::Lowpass,
-            freq:        1000.0,
+            freq:        20.0,
             q:           1.0,
             last_input:  0.0,
             low:         0.0,
@@ -51,12 +51,10 @@ impl Filter {
     }
 
     fn run(&mut self, input: f32) -> f32 {
-//        println!("SELFF: {} <- {} {} {}", input, self.f, self.low, self.band);
         self.low += self.f * self.band;
         let high = self.q * (input - self.band) - self.low;
         self.band += self.f * high;
 
-//        println!("SELFF: {} <- {} {} {} {}", input, self.f, self.low, self.band, high);
         match self.filter_type {
             FilterType::Lowpass  => self.low,
             FilterType::Highpass => high,

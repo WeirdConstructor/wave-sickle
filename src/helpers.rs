@@ -54,28 +54,18 @@ pub fn fast_cos(mut x: f64) -> f64 {
     let phase_scale  = 1.0_f64 / (std::f64::consts::PI * 2.0_f64);
     let phase        = 1.0_f64 + x * phase_scale;
 
-//    println!("phase = {}", phase);
     let phase_as_u64 : u64 = unsafe { std::mem::transmute::<f64, u64>(phase) };//  phase.to_bits();
-//    println!("pasi  ={:b}", phase_as_u64);
     let exponent     = (phase_as_u64 >> 52) - 1023;
-//    println!("EXP={}", exponent);
 
     let fract_bits : u32  = 32 - FAST_COS_TAB_LOG2_SIZE as u32;
-//    println!("bits ={:b}", fract_bits);
     let fract_scale  = 1 << fract_bits;
-//    println!("scale={:b}", fract_scale);
     let fract_mask   = fract_scale - 1;
-//    println!("mask ={:b}", fract_mask);
 
 
     let significand  = ((phase_as_u64 << exponent) >> (52 - 32)) as u32;
-//    println!("sign  ={:b}", significand);
     let index        = significand >> fract_bits;
-//    println!("index ={:b}", index);
     let fract : i32  = (significand as i32) & fract_mask;
-//    println!("fract ={:b}", fract);
 
-//    println!("FRSC x={} idx={} frct={}", x, index, fract);
     unsafe {
         // XXX: note: mutable statics can be mutated by multiple
         //      threads: aliasing violations or data races
@@ -156,68 +146,30 @@ fn resonance_to_param(resonance: f32) -> f32 {
     (resonance - 0.01) / 0.99
 }
 
-/*
-	StateVariableFilterType Helpers::ParamToStateVariableFilterType(float param)
-	{
-		return (StateVariableFilterType)(int)(param * 3.0f);
-	}
+fn param_to_unisono(param: f32) -> i32 {
+    (param * 15.0) as i32 + 1
+}
 
-	float Helpers::StateVariableFilterTypeToParam(StateVariableFilterType type)
-	{
-		return (float)type / 3.0f;
-	}
+fn unisono_to_param(unisono: i32) -> f32 {
+    (unisono - 1) as f32 / 15.0
+}
 
-	int Helpers::ParamToUnisono(float param)
-	{
-		return (int)(param * 15.0f) + 1;
-	}
+fn param_to_vibrato_freq(param: f32) -> f64 {
+    (pow(param as f64, 2.0) + 0.1) * 70.0
+}
 
-	float Helpers::UnisonoToParam(int unisono)
-	{
-		return (float)(unisono - 1) / 15.0f;
-	}
+fn vibrato_freq_to_param(vf: f64) -> f32 {
+    let d = vf / 70.0 - 0.1;
+    if d >= 0.0 { d.sqrt() as f32 } else { 0.0 }
+}
 
-	double Helpers::ParamToVibratoFreq(float param)
-	{
-		return (Pow((double)param, 2.0) + .1) * 70.0;
-	}
+fn pan_to_scalar_left(pan: f32) -> f32 {
+    (1.0 - pan).sqrt()
+}
 
-	float Helpers::VibratoFreqToParam(double vf)
-	{
-		double d = vf / 70.0 - .1;
-		return d >= 0.0 ? (float)sqrt(d) : 0.0f;
-	}
-
-	float Helpers::PanToScalarLeft(float pan)
-	{
-		return sqrtf(1.0f - pan);
-	}
-
-	float Helpers::PanToScalarRight(float pan)
-	{
-		return sqrtf(pan);
-	}
-
-	Spread Helpers::ParamToSpread(float param)
-	{
-		return (Spread)(int)(param * 2.0f);
-	}
-	
-	float Helpers::SpreadToParam(Spread spread)
-	{
-		return (float)spread / 2.0f;
-	}
-
-	VoiceMode Helpers::ParamToVoiceMode(float param)
-	{
-		return (VoiceMode)(int)(param * 1.0f);
-	}
-
-	float Helpers::VoiceModeToParam(VoiceMode voiceMode)
-	{
-		return (float)voiceMode / 1.0f;
-	}
-*/
+fn pan_to_scalar_right(pan: f32) -> f32 {
+    pan.sqrt()
+}
 
 #[macro_export]
 macro_rules! recalc_setter {
