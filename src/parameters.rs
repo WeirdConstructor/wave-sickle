@@ -91,3 +91,6 @@ pub enum Parameter {
     Freq(f32),
     Q(f32),
 }
+
+pub struct ParameterData {
+}
