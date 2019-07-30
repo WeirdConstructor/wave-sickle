@@ -158,6 +158,56 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
         }
     }
 
+    fn all_notes_off(&mut self)
+    {
+        for (i, vd) in self.voice_data.iter_mut().enumerate() {
+            if vd.is_on { self.voices[i].note_off(vd); }
+        }
+        self.mono_active = false;
+        self.note_count = 0;
+        for an in self.active_notes.iter_mut() {
+            *an = false;
+        }
+        self.clear_events();
+    }
+
+    fn note_on(&mut self, note: i32, velocity: i32, delta_samples: i32) {
+        for ev in self.events.iter_mut() {
+            if ev.typ == EventType::None {
+                ev.typ           = EventType::NoteOn;
+                ev.delta_samples = delta_samples;
+                ev.note          = note;
+                ev.velocity      = velocity;
+                break;
+            }
+        }
+    }
+
+    fn note_off(&mut self, note: i32, delta_samples: i32) {
+        for ev in self.events.iter_mut() {
+            if ev.typ == EventType::None {
+                ev.typ           = EventType::NoteOff;
+                ev.delta_samples = delta_samples;
+                ev.note          = note;
+                break;
+            }
+        }
+    }
+
+    fn set_voice_mode(&mut self, vm: VoiceMode) {
+        if self.voice_mode == vm {
+            return;
+        }
+
+        self.all_notes_off();
+        for vd in self.voice_data.iter_mut() {
+            vd.is_on = false;
+        }
+        self.voice_mode = vm;
+    }
+
+    fn get_voice_mode(&self) -> VoiceMode { self.voice_mode }
+
     fn clear_events(&mut self) {
         for e in self.events.iter_mut() { e.clear(); }
     }
