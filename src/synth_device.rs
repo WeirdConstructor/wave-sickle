@@ -112,7 +112,12 @@ trait Voice: Copy + Clone {
     fn note_off(&mut self, data: &mut VoiceData);
     fn note_slide(&mut self, data: &mut VoiceData, note: i32);
     fn get_note(&mut self, data: &mut VoiceData) -> f64;
-    fn run(&mut self, data: &mut VoiceData, song_pos: f64, param: &mut ParameterData, outputs: &mut [f64]);
+    fn run(&mut self,
+           data: &mut VoiceData,
+           param: &mut ParameterData,
+           song_pos: f64,
+           output_0: &mut [f64],
+           output_1: &mut [f64]);
 }
 
 struct SynthDevice<V>
@@ -134,6 +139,14 @@ struct SynthDevice<V>
     voice_data:     [VoiceData; 256],
     voices:         [V; 256],
     events:         [Event; 256],
+}
+
+fn clear_outputs(outputs: &mut [Vec<f64>]) {
+    for out in outputs.iter_mut() {
+        for sample in out.iter_mut() {
+            *sample = 0.0;
+        }
+    }
 }
 
 impl<V: Voice + ParameterSet> SynthDevice<V> {
@@ -158,6 +171,49 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
         }
     }
 
+    fn run(&mut self, mut song_pos: f64, param: &mut ParameterData, inputs: &mut [Vec<f64>], outputs: &mut [Vec<f64>]) {
+        let mut num_samples = outputs[0].len();
+        let orig_num_samples = num_samples;
+        clear_outputs(outputs);
+        let mut out_offs = 0;
+
+        while num_samples > 0 {
+            let mut samples_to_next_event = num_samples as i32;
+
+            for e in self.events.iter_mut() {
+                if e.typ == EventType::None {
+                    continue;
+                }
+
+                if e.delta_samples == 0 {
+                    // XXX: do amazing things here!
+                } else if e.delta_samples < samples_to_next_event {
+                    samples_to_next_event = e.delta_samples;
+                }
+            }
+
+            for (i, v) in self.voices.iter_mut().enumerate() {
+                let vd : &mut VoiceData = &mut self.voice_data[i];
+                if vd.is_on {
+                    v.run(
+                        vd, param, song_pos,
+                        &mut outputs[0][out_offs..],
+                        &mut outputs[1][out_offs..]);
+                }
+            }
+
+            for e in self.events.iter_mut() {
+                if e.typ != EventType::None {
+                    e.delta_samples -= samples_to_next_event;
+                }
+            }
+
+            song_pos    += samples_to_next_event as f64 / self.sample_rate;
+            out_offs    += samples_to_next_event as usize;
+            num_samples -= samples_to_next_event as usize;
+        }
+    }
+
     fn all_notes_off(&mut self)
     {
         for (i, vd) in self.voice_data.iter_mut().enumerate() {
@@ -171,6 +227,10 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
         self.clear_events();
     }
 
+    // XXX: Invariant: note_on must only be called with increasing
+    //      delta_samples. Otherwise the algorithm in run() will
+    //      not behave well. The invariant is, that the self.events
+    //      array is sorted by ascending delta_samples.
     fn note_on(&mut self, note: i32, velocity: i32, delta_samples: i32) {
         for ev in self.events.iter_mut() {
             if ev.typ == EventType::None {
