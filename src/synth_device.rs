@@ -197,7 +197,9 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
         }
     }
 
-    pub fn run(&mut self, mut song_pos: f64, param: &mut ParameterData, inputs: &mut [Vec<f64>], outputs: &mut [Vec<f64>]) {
+    pub fn run(&mut self, mut song_pos: f64, param: &mut ParameterData,
+               inputs: &mut [Vec<f64>], outputs: &mut [Vec<f64>]) {
+
         let mut num_samples = outputs[0].len();
         let orig_num_samples = num_samples;
         clear_outputs(outputs);
@@ -251,6 +253,7 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
                                     self.note_log[(self.note_count - 1) as usize];
                                 if e.note == log_note {
                                     while self.note_count > 0 {
+
                                         if self.active_notes[
                                             self.note_log[
                                                 (self.note_count - 1)
@@ -262,9 +265,25 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
                                                     v.note_slide(
                                                         vd,
                                                         self.note_log[
-                                                            (self.note_count -1)
+                                                            (self.note_count - 1)
                                                             as usize]);
                                                 }
+                                            }
+                                            break;
+                                        }
+
+                                        self.note_count -= 1;
+                                    }
+
+                                    if self.note_count == 0 {
+                                        self.mono_active = false;
+                                        for an in self.active_notes.iter_mut() {
+                                            *an = false;
+                                        }
+
+                                        for (v, vd) in voice_data_zip!(self) {
+                                            if vd.is_on {
+                                                v.note_off(vd);
                                             }
                                         }
                                     }
