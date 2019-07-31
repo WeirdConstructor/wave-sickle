@@ -116,8 +116,8 @@ trait Voice: Copy + Clone {
            data: &mut VoiceData,
            param: &mut ParameterData,
            song_pos: f64,
-           output_0: &mut [f64],
-           output_1: &mut [f64]);
+           out_offs: usize,
+           outputs: &mut [Vec<f64>]);
 }
 
 struct SynthDevice<V>
@@ -185,6 +185,50 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
                     continue;
                 }
 
+                match e.typ {
+                    EventType::NoteOn => {
+                        let mut j = self.voices_unisono;
+                        match self.voice_mode {
+                            VoiceMode::Polyphonic => {
+                                for (i, v) in self.voices.iter_mut().enumerate() {
+                                    if j <= 0 { break; }
+                                    let vd = &mut self.voice_data[i];
+
+                                    if !vd.is_on {
+                                        j -= 1;
+                                        let f = if self.voices_unisono > 1 {
+                                            j as f32 / (self.voices_unisono as f32 - 1.0)
+                                        } else {
+                                            j as f32
+                                        };
+
+                                        v.note_on(
+                                            vd,
+                                            e.note,
+                                            e.velocity,
+                                            f * self.voices_detune,
+                                            (f - 0.5)
+                                            * (self.voices_pan * 2.0 - 1.0)
+                                            + 0.5);
+                                    }
+                                }
+                            },
+                            VoiceMode::MonoLegatoTrill => {
+                                ()
+                            },
+                        }
+                    },
+                    EventType::NoteOff => {
+                        match self.voice_mode {
+                            VoiceMode::Polyphonic => {
+                            },
+                            VoiceMode::MonoLegatoTrill => {
+                            },
+                        }
+                    },
+                    _ => (),
+                }
+
                 if e.delta_samples == 0 {
                     // XXX: do amazing things here!
                 } else if e.delta_samples < samples_to_next_event {
@@ -195,10 +239,7 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
             for (i, v) in self.voices.iter_mut().enumerate() {
                 let vd : &mut VoiceData = &mut self.voice_data[i];
                 if vd.is_on {
-                    v.run(
-                        vd, param, song_pos,
-                        &mut outputs[0][out_offs..],
-                        &mut outputs[1][out_offs..]);
+                    v.run(vd, param, song_pos, out_offs, outputs);
                 }
             }
 
