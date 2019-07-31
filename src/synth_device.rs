@@ -149,6 +149,32 @@ fn clear_outputs(outputs: &mut [Vec<f64>]) {
     }
 }
 
+macro_rules! voice_data_zip {
+    ($self: ident) => { $self.voices.iter_mut().zip($self.voice_data.iter_mut()) }
+}
+
+macro_rules! detuned_notes_on {
+    ($self: ident, $e: ident, $j: ident) => {
+        for (v, vd) in voice_data_zip!($self) {
+            if $j <= 0 { break; }
+
+            if !vd.is_on {
+                $j -= 1;
+                let f = if $self.voices_unisono > 1 {
+                    $j as f32 / ($self.voices_unisono as f32 - 1.0)
+                } else {
+                    $j as f32
+                };
+
+                v.note_on(
+                    vd, $e.note, $e.velocity,
+                    f * $self.voices_detune,
+                    (f - 0.5) * ($self.voices_pan * 2.0 - 1.0) + 0.5);
+            }
+        }
+    }
+}
+
 impl<V: Voice + ParameterSet> SynthDevice<V> {
     fn new(sample_rate: f64) -> Self {
         SynthDevice {
@@ -171,27 +197,6 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
         }
     }
 
-    fn detuned_note_on(&mut self, e: &Event, j: &mut i32) {
-        for (i, v) in self.voices.iter_mut().enumerate() {
-            if j <= 0 { break; }
-            let vd = &mut self.voice_data[i];
-
-            if !vd.is_on {
-                j -= 1;
-                let f = if self.voices_unisono > 1 {
-                    j as f32 / (self.voices_unisono as f32 - 1.0)
-                } else {
-                    j as f32
-                };
-
-                v.note_on(
-                    vd, e.note, e.velocity,
-                    f * self.voices_detune,
-                    (f - 0.5) * (self.voices_pan * 2.0 - 1.0) + 0.5);
-            }
-        }
-    }
-
     pub fn run(&mut self, mut song_pos: f64, param: &mut ParameterData, inputs: &mut [Vec<f64>], outputs: &mut [Vec<f64>]) {
         let mut num_samples = outputs[0].len();
         let orig_num_samples = num_samples;
@@ -211,21 +216,20 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
                         let mut j = self.voices_unisono;
                         match self.voice_mode {
                             VoiceMode::Polyphonic => {
-                                detuned_note_on(&mut self, e, &mut j);
+                                detuned_notes_on!(self, e, j);
                             },
                             VoiceMode::MonoLegatoTrill => {
-                                self.active_notes[e.note] = true;
-                                self.note_log[self.note_count] = e.note;
+                                self.active_notes[e.note as usize] = true;
+                                self.note_log[self.note_count as usize] = e.note;
 
                                 if !self.mono_active { // no current note active, start new one
                                     self.mono_active = true;
-                                    detuned_note_on(&mut self, e, &mut j);
+                                    detuned_notes_on!(self, e, j);
 
                                 } else { // mono note active, slide to new note
-                                    for (i, v) in self.voices.iter_mut().enumerate() {
-                                        let vd = &mut self.voice_data[i];
-                                        if v.is_on {
-                                            v.node_slide(e.note);
+                                    for (v, vd) in voice_data_zip!(self) {
+                                        if vd.is_on {
+                                            v.note_slide(vd, e.note);
                                         }
                                     }
                                 }
@@ -235,8 +239,36 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
                     EventType::NoteOff => {
                         match self.voice_mode {
                             VoiceMode::Polyphonic => {
+                                for (v, vd) in voice_data_zip!(self) {
+                                    if vd.is_on && vd.note == e.note {
+                                        v.note_off(vd);
+                                    }
+                                }
                             },
                             VoiceMode::MonoLegatoTrill => {
+                                self.active_notes[e.note as usize] = false;
+                                let log_note =
+                                    self.note_log[(self.note_count - 1) as usize];
+                                if e.note == log_note {
+                                    while self.note_count > 0 {
+                                        if self.active_notes[
+                                            self.note_log[
+                                                (self.note_count - 1)
+                                                as usize]
+                                            as usize] {
+
+                                            for (v, vd) in voice_data_zip!(self) {
+                                                if vd.is_on {
+                                                    v.note_slide(
+                                                        vd,
+                                                        self.note_log[
+                                                            (self.note_count -1)
+                                                            as usize]);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             },
                         }
                     },
@@ -250,8 +282,7 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
                 }
             }
 
-            for (i, v) in self.voices.iter_mut().enumerate() {
-                let vd : &mut VoiceData = &mut self.voice_data[i];
+            for (v, vd) in self.voices.iter_mut().zip(self.voice_data.iter_mut()) {
                 if vd.is_on {
                     v.run(vd, param, song_pos, out_offs, outputs);
                 }
@@ -271,8 +302,8 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
 
     fn all_notes_off(&mut self)
     {
-        for (i, vd) in self.voice_data.iter_mut().enumerate() {
-            if vd.is_on { self.voices[i].note_off(vd); }
+        for (vd, v) in self.voice_data.iter_mut().zip(self.voices.iter_mut()) {
+            if vd.is_on { v.note_off(vd); }
         }
         self.mono_active = false;
         self.note_count = 0;
