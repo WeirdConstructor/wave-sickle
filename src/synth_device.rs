@@ -213,89 +213,88 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
                     continue;
                 }
 
-                match e.typ {
-                    EventType::NoteOn => {
-                        let mut j = self.voices_unisono;
-                        match self.voice_mode {
-                            VoiceMode::Polyphonic => {
-                                detuned_notes_on!(self, e, j);
-                            },
-                            VoiceMode::MonoLegatoTrill => {
-                                self.active_notes[e.note as usize] = true;
-                                self.note_log[self.note_count as usize] = e.note;
-
-                                if !self.mono_active { // no current note active, start new one
-                                    self.mono_active = true;
+                if e.delta_samples == 0 {
+                    match e.typ {
+                        EventType::NoteOn => {
+                            let mut j = self.voices_unisono;
+                            match self.voice_mode {
+                                VoiceMode::Polyphonic => {
                                     detuned_notes_on!(self, e, j);
+                                },
+                                VoiceMode::MonoLegatoTrill => {
+                                    self.active_notes[e.note as usize] = true;
+                                    self.note_log[self.note_count as usize] = e.note;
 
-                                } else { // mono note active, slide to new note
-                                    for (v, vd) in voice_data_zip!(self) {
-                                        if vd.is_on {
-                                            v.note_slide(vd, e.note);
+                                    if !self.mono_active { // no current note active, start new one
+                                        self.mono_active = true;
+                                        detuned_notes_on!(self, e, j);
+
+                                    } else { // mono note active, slide to new note
+                                        for (v, vd) in voice_data_zip!(self) {
+                                            if vd.is_on {
+                                                v.note_slide(vd, e.note);
+                                            }
                                         }
                                     }
-                                }
-                            },
-                        }
-                    },
-                    EventType::NoteOff => {
-                        match self.voice_mode {
-                            VoiceMode::Polyphonic => {
-                                for (v, vd) in voice_data_zip!(self) {
-                                    if vd.is_on && vd.note == e.note {
-                                        v.note_off(vd);
+                                },
+                            }
+                        },
+                        EventType::NoteOff => {
+                            match self.voice_mode {
+                                VoiceMode::Polyphonic => {
+                                    for (v, vd) in voice_data_zip!(self) {
+                                        if vd.is_on && vd.note == e.note {
+                                            v.note_off(vd);
+                                        }
                                     }
-                                }
-                            },
-                            VoiceMode::MonoLegatoTrill => {
-                                self.active_notes[e.note as usize] = false;
-                                let log_note =
-                                    self.note_log[(self.note_count - 1) as usize];
-                                if e.note == log_note {
-                                    while self.note_count > 0 {
+                                },
+                                VoiceMode::MonoLegatoTrill => {
+                                    self.active_notes[e.note as usize] = false;
+                                    let log_note =
+                                        self.note_log[(self.note_count - 1) as usize];
+                                    if e.note == log_note {
+                                        while self.note_count > 0 {
 
-                                        if self.active_notes[
-                                            self.note_log[
-                                                (self.note_count - 1)
-                                                as usize]
-                                            as usize] {
+                                            if self.active_notes[
+                                                self.note_log[
+                                                    (self.note_count - 1)
+                                                    as usize]
+                                                as usize] {
+
+                                                for (v, vd) in voice_data_zip!(self) {
+                                                    if vd.is_on {
+                                                        v.note_slide(
+                                                            vd,
+                                                            self.note_log[
+                                                                (self.note_count - 1)
+                                                                as usize]);
+                                                    }
+                                                }
+                                                break;
+                                            }
+
+                                            self.note_count -= 1;
+                                        }
+
+                                        if self.note_count == 0 {
+                                            self.mono_active = false;
+                                            for an in self.active_notes.iter_mut() {
+                                                *an = false;
+                                            }
 
                                             for (v, vd) in voice_data_zip!(self) {
                                                 if vd.is_on {
-                                                    v.note_slide(
-                                                        vd,
-                                                        self.note_log[
-                                                            (self.note_count - 1)
-                                                            as usize]);
+                                                    v.note_off(vd);
                                                 }
                                             }
-                                            break;
-                                        }
-
-                                        self.note_count -= 1;
-                                    }
-
-                                    if self.note_count == 0 {
-                                        self.mono_active = false;
-                                        for an in self.active_notes.iter_mut() {
-                                            *an = false;
-                                        }
-
-                                        for (v, vd) in voice_data_zip!(self) {
-                                            if vd.is_on {
-                                                v.note_off(vd);
-                                            }
                                         }
                                     }
-                                }
-                            },
-                        }
-                    },
-                    _ => (),
-                }
+                                },
+                            }
+                        },
+                        _ => (),
+                    }
 
-                if e.delta_samples == 0 {
-                    // XXX: do amazing things here!
                 } else if e.delta_samples < samples_to_next_event {
                     samples_to_next_event = e.delta_samples;
                 }
