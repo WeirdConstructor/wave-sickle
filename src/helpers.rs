@@ -182,6 +182,7 @@ macro_rules! recalc_setter {
     }
 }
 
+#[test]
 mod tests {
     use super::*;
 

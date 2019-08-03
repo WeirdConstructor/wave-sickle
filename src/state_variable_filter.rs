@@ -64,6 +64,7 @@ impl Filter {
     }
 }
 
+#[test]
 mod test {
     use super::*;
 

@@ -3,6 +3,8 @@ mod parameters;
 mod state_variable_filter;
 mod envelope;
 mod synth_device;
+mod sample_player;
+mod sample_loader;
 
 /*
 
@@ -83,6 +85,9 @@ fn audio() {
             44100
         };
 
+        let sample1 = sample_loader::load_wav("test_s1.wav");
+        println!("LOADED SMAPLE {}", sample1.len());
+
         println!("SMPL: {}", sample_rate);
 
         let mut fl = state_variable_filter::Filter::new(sample_rate as f64);
@@ -114,14 +119,14 @@ fn audio() {
                     }
                 },
                 StreamData::Output { buffer: UnknownTypeOutputBuffer::F32(mut buffer) } => {
-                    let mut last = 0.0;
+//                    let mut last = 0.0;
                     fl.set_freq(200.0 + (helpers::fast_sin(phase) + 1.0) as f32 *  200.0);
                     phase += 0.01;
                     for elem in buffer.iter_mut() {
                         let u = next_xoroshiro128(&mut ss);
                         *elem = 0.1 * fl.next(u64_to_open01(u) as f32);
 //                        *elem = 0.01 * helpers::fast_sin(phase) as f32;
-                        last = *elem;
+//                        last = *elem;
                     }
 //                    println!("FOFOE5 {}", last);
                 },

@@ -13,3 +13,4 @@ exclude      = ["res/*"]
 
 [dependencies]
 cpal = "0.10.0"
+hound = "3.4.0"

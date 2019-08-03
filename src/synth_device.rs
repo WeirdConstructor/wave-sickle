@@ -67,7 +67,7 @@ impl VoiceData {
         }
     }
 
-    fn note_on(&mut self, note: i32, velocity: i32, detune: f32, pan: f32) {
+    fn note_on(&mut self, note: i32, _velocity: i32, detune: f32, pan: f32) {
         self.is_on        = true;
         self.note         = note;
         self.detune       = detune;
@@ -198,7 +198,7 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
     }
 
     pub fn run(&mut self, mut song_pos: f64, param: &mut ParameterData,
-               inputs: &mut [Vec<f64>], outputs: &mut [Vec<f64>]) {
+               _inputs: &mut [Vec<f64>], outputs: &mut [Vec<f64>]) {
 
         let mut num_samples = outputs[0].len();
         let orig_num_samples = num_samples;
