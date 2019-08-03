@@ -86,7 +86,17 @@ fn audio() {
         };
 
         let sample1 = sample_loader::load_wav("test_s1.wav");
-        println!("LOADED SMAPLE {}", sample1.len());
+        let lens = sample1.len();
+        println!("LOADED SMAPLE {}", lens);
+
+        let mut sp = sample_player::SamplePlayer::new(sample_rate as f64);
+        sp.loop_mode = sample_player::LoopMode::PingPong;
+        sp.sample_loop_start = 0;
+        sp.sample_loop_length = lens as i32;
+        sp.sample_data = sample1;
+        sp.calc_pitch(0.0);
+        sp.init_pos();
+        sp.run_prep();
 
         println!("SMPL: {}", sample_rate);
 
@@ -119,14 +129,15 @@ fn audio() {
                     }
                 },
                 StreamData::Output { buffer: UnknownTypeOutputBuffer::F32(mut buffer) } => {
-//                    let mut last = 0.0;
+                    let mut last = 0.0;
                     fl.set_freq(200.0 + (helpers::fast_sin(phase) + 1.0) as f32 *  200.0);
                     phase += 0.01;
                     for elem in buffer.iter_mut() {
                         let u = next_xoroshiro128(&mut ss);
-                        *elem = 0.1 * fl.next(u64_to_open01(u) as f32);
+                        *elem = sp.next();
+//                        *elem = 0.1 * fl.next(u64_to_open01(u) as f32);
 //                        *elem = 0.01 * helpers::fast_sin(phase) as f32;
-//                        last = *elem;
+                        last = *elem;
                     }
 //                    println!("FOFOE5 {}", last);
                 },

@@ -20,7 +20,7 @@ pub enum LoopBoundaryMode {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct SamplePlayer {
+pub struct SamplePlayer {
     pub sample_rate:        f64,
     pub is_active:          bool,
     pub sample_start:       f32,
@@ -129,7 +129,7 @@ impl SamplePlayer {
             return 0.0;
         }
 
-        let mut sample : f32 = 
+        let mut sample : f32 =
             match self.interpolation_mode {
                 InterpolationMode::Nearest => {
                     self.sample_data[rounded_sample_pos as usize]
@@ -171,16 +171,21 @@ impl SamplePlayer {
                 }
             },
             LoopMode::PingPong => {
-                self.sample_pos =
-                    if self.sample_delta > 0.0
-                       && self.sample_pos >= self.rounded_loop_end as f64 {
+                if self.sample_delta > 0.0
+                   && self.sample_pos >= self.rounded_loop_end as f64 {
 
-                        (self.rounded_loop_end - 1) as f64
-                    } else {
-                        self.rounded_loop_start as f64
-                    };
-                self.sample_delta = -self.sample_delta;
-                self.reverse_ = !self.reverse_;
+                    self.sample_pos = (self.rounded_loop_end - 1) as f64;
+                    self.sample_delta = -self.sample_delta;
+                    self.reverse_ = !self.reverse_;
+
+                } else if self.sample_delta < 0.0
+                          && self.sample_pos < self.rounded_loop_start as f64 {
+
+                    self.sample_pos = self.rounded_loop_start as f64;
+                    self.sample_delta = -self.sample_delta;
+                    self.reverse_ = !self.reverse_;
+                    self.rounded_loop_start as f64;
+                }
             },
             LoopMode::Disabled => (),
         }
