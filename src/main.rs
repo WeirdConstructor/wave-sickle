@@ -6,6 +6,7 @@ mod synth_device;
 mod sample_player;
 mod sample_loader;
 mod all_pass;
+mod all_pass_delay;
 
 /*
 
@@ -95,8 +96,11 @@ fn audio() {
         sp.run_prep();
 
         let mut ap = all_pass::AllPass::new();
-        ap.set_buffer_size(10);
-        ap.set_feedback(0.7);
+        ap.set_buffer_size(10000);
+        ap.set_feedback(0.8);
+
+        let mut apd = all_pass_delay::AllPassDelay::new();
+        apd.delay(0.4);
 
         println!("SMPL: {}", sample_rate);
 
@@ -134,7 +138,7 @@ fn audio() {
                     phase += 0.01;
                     for elem in buffer.iter_mut() {
                         let u = next_xoroshiro128(&mut ss);
-                        let n = ap.process(sp.next());
+                        let n = apd.update(sp.next());
                         *elem = n;
 
 //                        *elem = 0.1 * fl.next(u64_to_open01(u) as f32);
