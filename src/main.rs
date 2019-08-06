@@ -5,6 +5,7 @@ mod envelope;
 mod synth_device;
 mod sample_player;
 mod sample_loader;
+mod all_pass;
 
 /*
 
@@ -32,11 +33,6 @@ double Helpers::FastCos(double x)
     return left + (right - left) * fractMix;
 }
 */
-
-
-
-
-
 
 // Taken from xoroshiro128 crate under MIT License
 // Implemented by Matthew Scharley (Copyright 2016)
@@ -98,6 +94,10 @@ fn audio() {
         sp.init_pos();
         sp.run_prep();
 
+        let mut ap = all_pass::AllPass::new();
+        ap.set_buffer_size(10);
+        ap.set_feedback(0.7);
+
         println!("SMPL: {}", sample_rate);
 
         let mut fl = state_variable_filter::Filter::new(sample_rate as f64);
@@ -134,7 +134,9 @@ fn audio() {
                     phase += 0.01;
                     for elem in buffer.iter_mut() {
                         let u = next_xoroshiro128(&mut ss);
-                        *elem = sp.next();
+                        let n = ap.process(sp.next());
+                        *elem = n;
+
 //                        *elem = 0.1 * fl.next(u64_to_open01(u) as f32);
 //                        *elem = 0.01 * helpers::fast_sin(phase) as f32;
                         last = *elem;
