@@ -31,10 +31,6 @@ impl Event {
     }
 }
 
-trait ParameterSet {
-    fn enumerate(&self) -> Vec<Parameter>;
-}
-
 #[derive(Debug, PartialEq, Copy, Clone)]
 struct VoiceData {
     pub sample_rate:      f64,
@@ -80,7 +76,7 @@ impl VoiceData {
     }
 
     fn note_slide<V>(&mut self, data: &SynthDevice<V>, note: i32)
-        where V: Voice + ParameterSet {
+        where V: Voice {
 
         self.slide_active     = true;
         self.destination_note = note;
@@ -121,7 +117,7 @@ trait Voice: Copy + Clone {
 }
 
 struct SynthDevice<V>
-    where V: Voice + ParameterSet {
+    where V: Voice {
 
     sample_rate:    f64,
     voices_unisono: i32,
@@ -175,7 +171,7 @@ macro_rules! detuned_notes_on {
     }
 }
 
-impl<V: Voice + ParameterSet> SynthDevice<V> {
+impl<V: Voice> SynthDevice<V> {
     fn new(sample_rate: f64) -> Self {
         SynthDevice {
             sample_rate,
@@ -378,7 +374,7 @@ impl<V: Voice + ParameterSet> SynthDevice<V> {
 }
 
 //struct SynthDevice<V>
-//    where V: Voice + ParameterSet {
+//    where V: Voice {
 //    voice_data:   [VoiceData; 256],
 //    voices:       [V; 256],
 //}
