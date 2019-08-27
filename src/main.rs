@@ -7,6 +7,7 @@ mod sample_player;
 mod sample_loader;
 mod all_pass;
 mod all_pass_delay;
+mod slaughter;
 
 /*
 
