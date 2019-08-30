@@ -27,12 +27,12 @@ use wctr_signal_ops::signals::{OpIn, Op, OpPort, OpIOSpec};
 //      DemOp trait gets a render() function, that takes a complete array of all
 //      allocated busses.
 
-struct SlaughterParams {
+pub struct SlaughterParams {
     
 }
 
 #[derive(Debug, Clone, Copy)]
-struct SlaughterVoice {
+pub struct SlaughterVoice {
 }
 
 impl Voice<SlaughterParams> for SlaughterVoice {
@@ -101,7 +101,7 @@ impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
     }
 }
 
-fn new_slaugher(sample_rate: f64) -> SynthDevice<SlaughterVoice, SlaughterParams> {
+pub fn new_slaughter(sample_rate: f64) -> SynthDevice<SlaughterVoice, SlaughterParams> {
     let params = SlaughterParams { };
     let sd : SynthDevice<SlaughterVoice, SlaughterParams> = 
         SynthDevice::new(sample_rate, params);
