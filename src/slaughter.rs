@@ -1,5 +1,6 @@
 use crate::synth_device::*;
-use wctr_signal_ops::signals::DemOp;
+use wctr_signal_ops::signals::{OpIn, Op, OpPort, OpIOSpec};
+
 //use crate::parameters::*;
 //use crate::helpers;
 
@@ -53,6 +54,50 @@ impl Voice<SlaughterParams> for SlaughterVoice {
            song_pos: f64,
            out_offs: usize,
            outputs: &mut [Vec<f64>]) {
+    }
+}
+
+impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
+    fn io_spec(&self, index: usize) -> OpIOSpec {
+        OpIOSpec {
+            inputs: vec![
+//                OpPort::new("amp",    0.0, 9999.0),
+//                OpPort::new("phase", -2.0 * std::f32::consts::PI,
+//                                      2.0 * std::f32::consts::PI),
+//                OpPort::new("vert",  -9999.0,  9999.0),
+//                OpPort::new("freq",      0.0, 11025.0),
+            ],
+            input_values: vec![],
+            input_defaults: vec![],
+            outputs: vec![],
+            output_regs: vec![],
+            audio_out_groups: vec![],
+            index,
+        }
+    }
+
+    fn init_regs(&mut self, _start_reg: usize, _regs: &mut [f32]) { }
+
+    fn get_output_reg(&mut self, _name: &str) -> Option<usize> { None }
+
+    fn set_input(&mut self, name: &str, to: OpIn, as_default: bool) -> bool {
+//        let s = if as_default { &mut self.defaults } else { &mut self.values };
+        match name {
+//            "amp"   => { s[0] = to; true },
+//            "phase" => { s[1] = to; true },
+//            "vert"  => { s[2] = to; true },
+//            "freq"  => { s[3] = to; true },
+            _       => false,
+        }
+    }
+
+    fn exec(&mut self, t: f32, regs: &mut [f32]) {
+//        let a = self.values[0].calc(regs);
+//        let p = self.values[1].calc(regs);
+//        let v = self.values[2].calc(regs);
+//        let f = self.values[3].calc(regs);
+//        regs[self.out] = a * (((f * t) + p).sin() + v);
+        //d// println!("OUT: {}, {}", regs[self.out], self.out);
     }
 }
 
