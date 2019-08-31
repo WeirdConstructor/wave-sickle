@@ -83,6 +83,8 @@ fn audio() {
             44100
         };
 
+        let channels = format.channels as usize;
+
         let sample1 = sample_loader::load_wav("test_s1.wav");
         let lens = sample1.len();
         println!("LOADED SMAPLE {}", lens);
@@ -134,6 +136,7 @@ fn audio() {
                     }
                 },
                 StreamData::Output { buffer: UnknownTypeOutputBuffer::F32(mut buffer) } => {
+                //println!("BUF {}", buffer.len());
                     let mut last = 0.0;
                     fl.set_freq(200.0 + (helpers::fast_sin(phase) + 1.0) as f32 *  200.0);
                     phase += 0.01;
