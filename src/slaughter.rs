@@ -28,6 +28,7 @@ use wctr_signal_ops::signals::{OpIn, Op, OpPort, OpIOSpec};
 //      allocated busses.
 
 pub struct SlaughterParams {
+    rst : [u64; 2],
     
 }
 
@@ -56,6 +57,33 @@ impl Voice<SlaughterParams> for SlaughterVoice {
            outputs: &mut [Vec<f64>]) {
     }
 }
+
+// Taken from xoroshiro128 crate under MIT License
+// Implemented by Matthew Scharley (Copyright 2016)
+// https://github.com/mscharley/rust-xoroshiro128
+pub fn next_xoroshiro128(state: &mut [u64; 2]) -> u64 {
+    let s0: u64     = state[0];
+    let mut s1: u64 = state[1];
+    let result: u64 = s0.wrapping_add(s1);
+
+    s1 ^= s0;
+    state[0] = s0.rotate_left(55) ^ s1 ^ (s1 << 14); // a, b
+    state[1] = s1.rotate_left(36); // c
+
+    result
+}
+
+// Taken from rand::distributions
+// Licensed under the Apache License, Version 2.0
+// Copyright 2018 Developers of the Rand project.
+pub fn u64_to_open01(u: u64) -> f64 {
+    use core::f64::EPSILON;
+    let float_size         = std::mem::size_of::<f64>() as u32 * 8;
+    let fraction           = u >> (float_size - 52);
+    let exponent_bits: u64 = (1023 as u64) << 52;
+    f64::from_bits(fraction | exponent_bits) - (1.0 - EPSILON / 2.0)
+}
+
 
 impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
     fn io_spec(&self, index: usize) -> OpIOSpec {
@@ -99,10 +127,25 @@ impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
 //        regs[self.out] = a * (((f * t) + p).sin() + v);
         //d// println!("OUT: {}, {}", regs[self.out], self.out);
     }
+
+    fn render(&mut self, num_samples: usize, offs: usize, input_idx: usize, bufs: &mut Vec<Vec<f32>>)
+    {
+        let u = next_xoroshiro128(&mut self.params.rst);
+        let f = u64_to_open01(u) as f32;
+
+        for i in 0..num_samples {
+            bufs[input_idx][offs + (i * 2)]     = f;
+            bufs[input_idx][offs + (i * 2) + 1] = f;
+        }
+    }
 }
 
 pub fn new_slaughter(sample_rate: f64) -> SynthDevice<SlaughterVoice, SlaughterParams> {
-    let params = SlaughterParams { };
+    let a : u64 = 0x193a6754a8a7d469;
+    let b : u64 = 0x97830e05113ba7bb;
+    let params = SlaughterParams {
+        rst: [a, b],
+    };
     let sd : SynthDevice<SlaughterVoice, SlaughterParams> = 
         SynthDevice::new(sample_rate, params);
     sd
