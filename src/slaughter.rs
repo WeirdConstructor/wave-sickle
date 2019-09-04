@@ -130,10 +130,10 @@ impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
 
     fn render(&mut self, num_samples: usize, offs: usize, input_idx: usize, bufs: &mut Vec<Vec<f32>>)
     {
-        let u = next_xoroshiro128(&mut self.params.rst);
-        let f = u64_to_open01(u) as f32;
-
         for i in 0..num_samples {
+            let u = next_xoroshiro128(&mut self.params.rst);
+            let f = ((u64_to_open01(u) as f32) * 2.0) - 1.0;
+
             bufs[input_idx][offs + (i * 2)]     = f;
             bufs[input_idx][offs + (i * 2) + 1] = f;
         }
