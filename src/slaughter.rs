@@ -173,6 +173,7 @@ impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
     }
 
     fn event(&mut self, ev: &Event) {
+    println!("SLAU EVENT: {:?}", ev);
         match ev {
             Event::NoteOn(n) => { self.note_on(*n as i32, 0, 0); },
             Event::NoteOff(n) => { self.note_off(*n as i32, 0); },
@@ -206,11 +207,13 @@ impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
     fn render(&mut self, num_samples: usize, offs: usize, input_idx: usize, bufs: &mut Vec<Vec<f32>>)
     {
         let mut f : [f32; 1] = [0.0; 1];
+        println!("RENDER {}", num_samples);
         self.run(0.0, num_samples, &mut f, &mut bufs[input_idx][..]);
     }
 }
 
 pub fn new_slaughter(sample_rate: f64) -> SynthDevice<SlaughterVoice, SlaughterParams> {
+    println!("NEW SLAUGHTER!");
     let params = SlaughterParams::new();
     let sd : SynthDevice<SlaughterVoice, SlaughterParams> =
         SynthDevice::new(sample_rate, params);

@@ -204,6 +204,7 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
         let mut out_offs = 0;
 
         while num_samples > 0 {
+            //d// println!("N {}", num_samples);
             let mut samples_to_next_event = num_samples as i32;
 
             for e in self.events.iter_mut() {
@@ -310,6 +311,8 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
                     e.delta_samples -= samples_to_next_event;
                 }
             }
+
+            println!("SAMSAM {} {}", num_samples, samples_to_next_event);
 
             song_pos    += samples_to_next_event as f64 / self.sample_rate;
             out_offs    += samples_to_next_event as usize;
