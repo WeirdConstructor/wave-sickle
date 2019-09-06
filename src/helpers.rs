@@ -171,6 +171,67 @@ pub fn pan_to_scalar_right(pan: f32) -> f32 {
     pan.sqrt()
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct RandGen {
+    r: [u64; 2],
+}
+
+fn some_now_timestamp() -> u64 {
+    std::time::SystemTime::now()
+    .duration_since(std::time::SystemTime::UNIX_EPOCH)
+    .unwrap()
+    .as_secs() as u64
+}
+
+// Taken from xoroshiro128 crate under MIT License
+// Implemented by Matthew Scharley (Copyright 2016)
+// https://github.com/mscharley/rust-xoroshiro128
+pub fn next_xoroshiro128(state: &mut [u64; 2]) -> u64 {
+    let s0: u64     = state[0];
+    let mut s1: u64 = state[1];
+    let result: u64 = s0.wrapping_add(s1);
+
+    s1 ^= s0;
+    state[0] = s0.rotate_left(55) ^ s1 ^ (s1 << 14); // a, b
+    state[1] = s1.rotate_left(36); // c
+
+    result
+}
+
+// Taken from rand::distributions
+// Licensed under the Apache License, Version 2.0
+// Copyright 2018 Developers of the Rand project.
+pub fn u64_to_open01(u: u64) -> f64 {
+    use core::f64::EPSILON;
+    let float_size         = std::mem::size_of::<f64>() as u32 * 8;
+    let fraction           = u >> (float_size - 52);
+    let exponent_bits: u64 = (1023 as u64) << 52;
+    f64::from_bits(fraction | exponent_bits) - (1.0 - EPSILON / 2.0)
+}
+
+impl RandGen {
+    pub fn new() -> Self {
+        RandGen {
+            r: [0x193a6754a8a7d469, 0x97830e05113ba7bb],
+        }
+    }
+
+    pub fn new_with_time() -> Self {
+        let mut s = Self::new();
+        s.r[0] += some_now_timestamp();
+        s.r[1] += some_now_timestamp();
+        s
+    }
+
+    pub fn next(&mut self) -> u64 {
+        next_xoroshiro128(&mut self.r)
+    }
+
+    pub fn next_open01(&mut self) -> f64 {
+        u64_to_open01(self.next())
+    }
+}
+
 #[macro_export]
 macro_rules! recalc_setter {
     ($fun_name: ident, $g: ident, $typ: ident) => {

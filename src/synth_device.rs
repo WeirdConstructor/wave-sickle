@@ -63,7 +63,7 @@ impl VoiceData {
         }
     }
 
-    fn note_on(&mut self, note: i32, _velocity: i32, detune: f32, pan: f32) {
+    pub fn note_on(&mut self, note: i32, _velocity: i32, detune: f32, pan: f32) {
         self.is_on        = true;
         self.note         = note;
         self.detune       = detune;
@@ -72,10 +72,10 @@ impl VoiceData {
         self.slide_active = false;
     }
 
-    fn note_off(&mut self) {
+    pub fn note_off(&mut self) {
     }
 
-    fn note_slide<V, P>(&mut self, data: &SynthDevice<V, P>, note: i32)
+    pub fn note_slide<V, P>(&mut self, data: &SynthDevice<V, P>, note: i32)
         where V: Voice<P> {
 
         self.slide_active     = true;
@@ -87,7 +87,7 @@ impl VoiceData {
         self.slide_samples    = (self.sample_rate * slide_time) as i32;
     }
 
-    fn get_note(&mut self) -> f64 {
+    pub fn get_note(&mut self) -> f64 {
         if self.slide_active {
             self.current_note += self.slide_delta;
             self.slide_samples -= 1;
@@ -112,8 +112,9 @@ pub trait Voice<P>: Copy + Clone {
            data: &mut VoiceData,
            params: &mut P,
            song_pos: f64,
+           sample_num: usize,
            out_offs: usize,
-           outputs: &mut [Vec<f64>]);
+           outputs: &mut [f32]);
 }
 
 pub struct SynthDevice<V, P>
@@ -138,11 +139,9 @@ pub struct SynthDevice<V, P>
 pub params:         P,
 }
 
-fn clear_outputs(outputs: &mut [Vec<f64>]) {
+fn clear_outputs(outputs: &mut [f32]) {
     for out in outputs.iter_mut() {
-        for sample in out.iter_mut() {
-            *sample = 0.0;
-        }
+        *out = 0.0;
     }
 }
 
@@ -196,9 +195,10 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
     }
 
     pub fn run(&mut self, mut song_pos: f64,
-               _inputs: &mut [Vec<f64>], outputs: &mut [Vec<f64>]) {
+                mut num_samples: usize,
+               _inputs: &mut [f32],
+               outputs: &mut [f32]) {
 
-        let mut num_samples = outputs[0].len();
         let orig_num_samples = num_samples;
         clear_outputs(outputs);
         let mut out_offs = 0;
@@ -301,7 +301,7 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
 
             for (v, vd) in self.voices.iter_mut().zip(self.voice_data.iter_mut()) {
                 if vd.is_on {
-                    v.run(vd, &mut self.params, song_pos, out_offs, outputs);
+                    v.run(vd, &mut self.params, song_pos, num_samples, out_offs, outputs);
                 }
             }
 
@@ -334,7 +334,7 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
     //      delta_samples. Otherwise the algorithm in run() will
     //      not behave well. The invariant is, that the self.events
     //      array is sorted by ascending delta_samples.
-    fn note_on(&mut self, note: i32, velocity: i32, delta_samples: i32) {
+    pub fn note_on(&mut self, note: i32, velocity: i32, delta_samples: i32) {
         for ev in self.events.iter_mut() {
             if ev.typ == EventType::None {
                 ev.typ           = EventType::NoteOn;
@@ -346,7 +346,7 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
         }
     }
 
-    fn note_off(&mut self, note: i32, delta_samples: i32) {
+    pub fn note_off(&mut self, note: i32, delta_samples: i32) {
         for ev in self.events.iter_mut() {
             if ev.typ == EventType::None {
                 ev.typ           = EventType::NoteOff;
