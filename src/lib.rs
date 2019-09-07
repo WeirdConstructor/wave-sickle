@@ -1,4 +1,4 @@
-mod helpers;
+pub mod helpers;
 mod parameters;
 mod state_variable_filter;
 mod envelope;

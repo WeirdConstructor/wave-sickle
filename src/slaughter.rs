@@ -68,21 +68,23 @@ impl Oscillator {
             self.sample_rate * 0.5 / helpers::note_to_freq(note);
         let dc_offs : f64 = -0.498 / phase_max;
 
+        //d// println!("FO {} {} {}", self.phase, phase_max, pulse_width);
         let mut phase2 : f64 =
             ((self.phase + 2.0 * phase_max * (pulse_width as f64))
              % (phase_max * 2.0)) - phase_max;
         self.phase = (self.phase + 1.0) % (phase_max * 2.0);
-        let mut tmp_phase = self.phase - phase_max;
+        let mut tmp_phase : f64 = self.phase - phase_max;
 
-        let epsilon = 0.0000001;
-        let blit1 =
+        let epsilon : f64 = 0.0000001;
+        let blit1 : f64 =
             if tmp_phase > epsilon || tmp_phase < -epsilon {
                 tmp_phase *= 3.141592;
+                //d// println!("IN: {} => {}", tmp_phase,  helpers::fast_sin(tmp_phase));
                 helpers::fast_sin(tmp_phase) / tmp_phase
             } else {
                 1.0
             };
-        let blit2 =
+        let blit2 : f64 =
             if phase2 > epsilon || phase2 < -epsilon {
                 phase2 *= 3.141592;
                 helpers::fast_sin(phase2) / phase2
@@ -90,12 +92,15 @@ impl Oscillator {
                 1.0
             };
 
+        //d// println!("B1={} B2={}", blit1, blit2);
+
         self.integral =
             0.998 * self.integral
             + dc_offs * (1.0 - (waveform as f64))
             + blit1
             - blit2 * (waveform as f64);
 
+//        println!("NEX: {}", self.integral);
         self.integral as f32
     }
 }
@@ -126,13 +131,19 @@ impl Voice<SlaughterParams> for SlaughterVoice {
         }
     }
     fn note_on(&mut self, data: &mut VoiceData, params: &mut SlaughterParams, note: i32, velocity: i32, detune: f32, pan: f32) {
+        println!("SLAUGHGH NOTE ON {}", note);
+        data.note_on(note, 0, detune, pan);
     }
     fn note_off(&mut self, data: &mut VoiceData, params: &mut SlaughterParams) {
+        println!("SLAUGHGH NOTE OFF");
+        data.note_off();
+        data.is_on = false; // TODO: REMOVE ME IF WE HAVE ENVELOPES!
     }
-    fn note_slide(&mut self, data: &mut VoiceData, params: &mut SlaughterParams, note: i32) {
+    fn note_slide(&mut self, data: &mut VoiceData, params: &mut SlaughterParams, slide: f32, note: i32) {
+        data.note_slide(slide, note);
     }
     fn get_note(&mut self, data: &mut VoiceData, params: &mut SlaughterParams) -> f64 {
-        0.0
+        data.get_note() as f64
     }
     fn run(&mut self,
            data: &mut VoiceData,
@@ -142,14 +153,23 @@ impl Voice<SlaughterParams> for SlaughterVoice {
            out_offs: usize,
            outputs: &mut [f32]) {
 
-
         let base_note : f64 = data.get_note();
 
+//        let mut fi = false;
+//        let mut f : f32 = 0.0;
+//        let mut l : f32 = 0.0;
+
         for i in 0..sample_num {
-            let s = self.osc1.next(base_note, params.osc1_waveform, params.osc1_pulse_width);
+            let s =
+                self.osc1.next(
+                    base_note, params.osc1_waveform, params.osc1_pulse_width);
+//            if !fi { f = s; fi = true; }
+//            l = s;
             outputs[out_offs + (i * 2)]     = s as f32;
             outputs[out_offs + (i * 2) + 1] = s as f32;
+            //d// println!("S {}", s);
         }
+//        println!("OUT[{}]: {} => {}", base_note, f, l);
     }
 }
 
@@ -173,9 +193,9 @@ impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
     }
 
     fn event(&mut self, ev: &Event) {
-    println!("SLAU EVENT: {:?}", ev);
+        println!("SLAU EVENT: {:?}", ev);
         match ev {
-            Event::NoteOn(n) => { self.note_on(*n as i32, 0, 0); },
+            Event::NoteOn(n)  => { self.note_on(*n as i32, 0, 0); },
             Event::NoteOff(n) => { self.note_off(*n as i32, 0); },
         }
     }
@@ -207,7 +227,7 @@ impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
     fn render(&mut self, num_samples: usize, offs: usize, input_idx: usize, bufs: &mut Vec<Vec<f32>>)
     {
         let mut f : [f32; 1] = [0.0; 1];
-        println!("RENDER {}", num_samples);
+        println!("RENDER #samples={}", num_samples);
         self.run(0.0, num_samples, &mut f, &mut bufs[input_idx][..]);
     }
 }

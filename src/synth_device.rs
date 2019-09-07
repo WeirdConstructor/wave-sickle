@@ -75,13 +75,12 @@ impl VoiceData {
     pub fn note_off(&mut self) {
     }
 
-    pub fn note_slide<V, P>(&mut self, data: &SynthDevice<V, P>, note: i32)
-        where V: Voice<P> {
+    pub fn note_slide(&mut self, slide: f32, note: i32) {
 
         self.slide_active     = true;
         self.destination_note = note;
 
-        let slide_time        = 10.0 * helpers::pow(data.slide as f64, 4.0);
+        let slide_time        = 10.0 * helpers::pow(slide as f64, 4.0);
         self.slide_delta      = (note as f64 - self.current_note)
                                 / self.sample_rate * slide_time;
         self.slide_samples    = (self.sample_rate * slide_time) as i32;
@@ -106,7 +105,7 @@ pub trait Voice<P>: Copy + Clone {
     fn new(sample_rate: f64) -> Self;
     fn note_on(&mut self, data: &mut VoiceData, params: &mut P, note: i32, velocity: i32, detune: f32, pan: f32);
     fn note_off(&mut self, data: &mut VoiceData, params: &mut P);
-    fn note_slide(&mut self, data: &mut VoiceData, params: &mut P, note: i32);
+    fn note_slide(&mut self, data: &mut VoiceData, params: &mut P, slide: f32, note: i32);
     fn get_note(&mut self, data: &mut VoiceData, params: &mut P) -> f64;
     fn run(&mut self,
            data: &mut VoiceData,
@@ -204,7 +203,6 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
         let mut out_offs = 0;
 
         while num_samples > 0 {
-            //d// println!("N {}", num_samples);
             let mut samples_to_next_event = num_samples as i32;
 
             for e in self.events.iter_mut() {
@@ -231,7 +229,7 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
                                     } else { // mono note active, slide to new note
                                         for (v, vd) in voice_data_zip!(self) {
                                             if vd.is_on {
-                                                v.note_slide(vd, &mut self.params, e.note);
+                                                v.note_slide(vd, &mut self.params, self.slide, e.note);
                                             }
                                         }
                                     }
@@ -265,6 +263,7 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
                                                         v.note_slide(
                                                             vd,
                                                             &mut self.params,
+                                                            self.slide,
                                                             self.note_log[
                                                                 (self.note_count - 1)
                                                                 as usize]);
@@ -295,24 +294,27 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
                         _ => (),
                     }
 
+                    e.typ = EventType::None;
+
                 } else if e.delta_samples < samples_to_next_event {
                     samples_to_next_event = e.delta_samples;
                 }
             }
 
+            let mut cnt = 0;
             for (v, vd) in self.voices.iter_mut().zip(self.voice_data.iter_mut()) {
                 if vd.is_on {
+                    cnt += 1;
                     v.run(vd, &mut self.params, song_pos, num_samples, out_offs, outputs);
                 }
             }
+            println!("VOICES ON: {}", cnt);
 
             for e in self.events.iter_mut() {
                 if e.typ != EventType::None {
                     e.delta_samples -= samples_to_next_event;
                 }
             }
-
-            println!("SAMSAM {} {}", num_samples, samples_to_next_event);
 
             song_pos    += samples_to_next_event as f64 / self.sample_rate;
             out_offs    += samples_to_next_event as usize;
