@@ -308,7 +308,7 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
                     v.run(vd, &mut self.params, song_pos, num_samples, out_offs, outputs);
                 }
             }
-            println!("VOICES ON: {}", cnt);
+            //d// println!("VOICES ON: {}", cnt);
 
             for e in self.events.iter_mut() {
                 if e.typ != EventType::None {
