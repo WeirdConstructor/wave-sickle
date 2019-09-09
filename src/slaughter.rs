@@ -41,11 +41,11 @@ impl SlaughterParams {
     pub fn new() -> Self {
         let mut p = SignalIOParams::new();
 
-        p.input("o1_wav",           0.0, 1.0, 0.0);
-        p.input("o1_pw",            0.0, 1.0, 0.5);
-        p.input("o1_det_coarse",    0.0, 1.0, 0.0);
-        p.input("o1_det_fine",      0.0, 1.0, 0.0);
-        p.input("o1_vol",           0.0, 1.0, 1.0);
+        p.input("o1_wav",     0.0, 1.0, 0.0);
+        p.input("o1_pw",      0.0, 1.0, 0.5);
+        p.input("o1_detc",    0.0, 1.0, 0.0);
+        p.input("o1_detf",    0.0, 1.0, 0.0);
+        p.input("o1_vol",     0.0, 1.0, 1.0);
 
         SlaughterParams {
             osc1_waveform:      p.v(0),
