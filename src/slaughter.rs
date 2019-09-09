@@ -1,4 +1,5 @@
 use crate::synth_device::*;
+use crate::helpers::SignalIOParams;
 use crate::helpers;
 use wctr_signal_ops::signals::{OpIn, Op, OpPort, OpIOSpec, Event};
 
@@ -28,6 +29,7 @@ use wctr_signal_ops::signals::{OpIn, Op, OpPort, OpIOSpec, Event};
 //      allocated busses.
 
 pub struct SlaughterParams {
+    params:                 SignalIOParams,
     osc1_waveform:          f32,
     osc1_pulse_width:       f32,
     osc1_volume:            f32,
@@ -37,12 +39,21 @@ pub struct SlaughterParams {
 
 impl SlaughterParams {
     pub fn new() -> Self {
+        let mut p = SignalIOParams::new();
+
+        p.input("o1_wav",           0.0, 1.0, 0.0);
+        p.input("o1_pw",            0.0, 1.0, 0.5);
+        p.input("o1_det_coarse",    0.0, 1.0, 0.0);
+        p.input("o1_det_fine",      0.0, 1.0, 0.0);
+        p.input("o1_vol",           0.0, 1.0, 1.0);
+
         SlaughterParams {
-            osc1_waveform:      0.0,
-            osc1_pulse_width:   0.5,
-            osc1_detune_coarse: 0.0,
-            osc1_detune_fine:   0.0,
-            osc1_volume:        1.0,
+            osc1_waveform:      p.v(0),
+            osc1_pulse_width:   p.v(1),
+            osc1_detune_coarse: p.v(2),
+            osc1_detune_fine:   p.v(3),
+            osc1_volume:        p.v(4),
+            params:             p,
         }
     }
 }
@@ -175,17 +186,11 @@ impl Voice<SlaughterParams> for SlaughterVoice {
 impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
     fn io_spec(&self, index: usize) -> OpIOSpec {
         OpIOSpec {
-            inputs: vec![
-//                OpPort::new("amp",    0.0, 9999.0),
-//                OpPort::new("phase", -2.0 * std::f32::consts::PI,
-//                                      2.0 * std::f32::consts::PI),
-//                OpPort::new("vert",  -9999.0,  9999.0),
-//                OpPort::new("freq",      0.0, 11025.0),
-            ],
-            input_values: vec![],
-            input_defaults: vec![],
-            outputs: vec![],
-            output_regs: vec![],
+            inputs:           self.params.params.ports.clone(),
+            input_values:     self.params.params.inputs.clone(),
+            input_defaults:   self.params.params.defaults.clone(),
+            outputs:          vec![],
+            output_regs:      vec![],
             audio_out_groups: vec![],
             index,
         }
@@ -204,17 +209,16 @@ impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
     fn get_output_reg(&mut self, _name: &str) -> Option<usize> { None }
 
     fn set_input(&mut self, name: &str, to: OpIn, as_default: bool) -> bool {
-//        let s = if as_default { &mut self.defaults } else { &mut self.values };
-        match name {
-//            "amp"   => { s[0] = to; true },
-//            "phase" => { s[1] = to; true },
-//            "vert"  => { s[2] = to; true },
-//            "freq"  => { s[3] = to; true },
-            _       => false,
-        }
+        self.params.params.set(name, to, as_default)
     }
 
     fn exec(&mut self, t: f32, regs: &mut [f32]) {
+        self.params.osc1_waveform      = self.params.params.inputs[0].calc(regs);
+        self.params.osc1_pulse_width   = 1.0 - self.params.params.inputs[1].calc(regs);
+        self.params.osc1_detune_coarse = self.params.params.inputs[2].calc(regs);
+        self.params.osc1_detune_fine   = self.params.params.inputs[3].calc(regs);
+        self.params.osc1_volume        = self.params.params.inputs[4].calc(regs);
+
 //        let a = self.values[0].calc(regs);
 //        let p = self.values[1].calc(regs);
 //        let v = self.values[2].calc(regs);

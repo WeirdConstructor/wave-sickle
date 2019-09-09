@@ -1,4 +1,5 @@
 #![macro_use]
+use wctr_signal_ops::signals::{OpIn, Op, OpPort, OpIOSpec, Event};
 
 static FAST_COS_TAB_LOG2_SIZE : usize = 9;
 static FAST_COS_TAB_SIZE : usize      = 1 << FAST_COS_TAB_LOG2_SIZE; // =512
@@ -229,6 +230,47 @@ impl RandGen {
 
     pub fn next_open01(&mut self) -> f64 {
         u64_to_open01(self.next())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SignalIOParams {
+    pub inputs:     Vec<OpIn>,
+    pub defaults:   Vec<OpIn>,
+    pub ports:      Vec<OpPort>,
+}
+
+impl SignalIOParams {
+    pub fn new() -> Self {
+        SignalIOParams {
+            inputs: Vec::new(),
+            defaults: Vec::new(),
+            ports: Vec::new(),
+        }
+    }
+
+    pub fn v(&self, idx: usize) -> f32 {
+        if let OpIn::Constant(c) = self.inputs[idx] { c } else { 0.0 }
+    }
+
+    pub fn input(&mut self, name: &str, min: f32, max: f32, default: f32) {
+        self.inputs.push(OpIn::Constant(default));
+        self.defaults.push(OpIn::Constant(default));
+        self.ports.push(OpPort::new(name, min, max));
+    }
+
+    pub fn set(&mut self, name: &str, to: OpIn, as_default: bool) -> bool {
+        if let Some((i, port)) =
+            self.ports.iter().enumerate().find(|(_i, p)| p.name == name) {
+
+            if as_default { self.defaults[i] = to; }
+            else { self.inputs[i] = to; }
+
+            true
+
+        } else {
+            false
+        }
     }
 }
 
