@@ -1,3 +1,4 @@
+use crate::parameters::*;
 use crate::synth_device::*;
 use crate::helpers::SignalIOParams;
 use crate::helpers;
@@ -35,24 +36,108 @@ pub struct SlaughterParams {
     osc1_volume:            f32,
     osc1_detune_coarse:     f32,
     osc1_detune_fine:       f32,
+    osc2_waveform:          f32,
+    osc2_pulse_width:       f32,
+    osc2_volume:            f32,
+    osc2_detune_coarse:     f32,
+    osc2_detune_fine:       f32,
+    osc3_waveform:          f32,
+    osc3_pulse_width:       f32,
+    osc3_volume:            f32,
+    osc3_detune_coarse:     f32,
+    osc3_detune_fine:       f32,
+    noise_volume:           f32,
+    master_level:           f32,
+    filter_type:            FilterType,
+    filter_freq:            f32,
+    filter_resonance:       f32,
+    filter_mod_amt:         f32,
+    amp_attack:             f32,
+    amp_decay:              f32,
+    amp_sustain:            f32,
+    amp_release:            f32,
+    mod_attack:             f32,
+    mod_decay:              f32,
+    mod_sustain:            f32,
+    mod_release:            f32,
+    pitch_attack:           f32,
+    pitch_decay:            f32,
+    pitch_sustain:          f32,
+    pitch_release:          f32,
 }
 
 impl SlaughterParams {
     pub fn new() -> Self {
         let mut p = SignalIOParams::new();
 
-        p.input("o1_wav",     0.0, 1.0, 0.0);
-        p.input("o1_pw",      0.0, 1.0, 0.5);
-        p.input("o1_detc",    0.0, 1.0, 0.0);
-        p.input("o1_detf",    0.0, 1.0, 0.0);
         p.input("o1_vol",     0.0, 1.0, 1.0);
+        p.input("o2_vol",     0.0, 1.0, 1.0);
+        p.input("o3_vol",     0.0, 1.0, 1.0);
+        p.input("nse_vol",    0.0, 1.0, 1.0);
+        p.input("m_vol",      0.0, 1.0, 1.0);
+        p.input("o1_wav",     0.0, 1.0, 0.0);
+        p.input("o2_wav",     0.0, 1.0, 0.0);
+        p.input("o3_wav",     0.0, 1.0, 0.0);
+        p.input("o1_pw",      0.0, 1.0, 0.5);
+        p.input("o2_pw",      0.0, 1.0, 0.5);
+        p.input("o3_pw",      0.0, 1.0, 0.5);
+        p.input("o1_detc",    0.0, 1.0, 0.0);
+        p.input("o2_detc",    0.0, 1.0, 0.0);
+        p.input("o3_detc",    0.0, 1.0, 0.0);
+        p.input("o1_detf",    0.0, 1.0, 0.0);
+        p.input("o2_detf",    0.0, 1.0, 0.0);
+        p.input("o3_detf",    0.0, 1.0, 0.0);
+        p.input("f_typ",      0.0, 1.0, 0.0);
+        p.input("f_freq",     0.0, 1.0, 0.0);
+        p.input("f_res",      0.0, 1.0, 0.0);
+        p.input("f_mod",      0.0, 1.0, 0.0);
+        p.input("amp_a",      0.0, 1.0, 0.0);
+        p.input("amp_d",      0.0, 1.0, 0.0);
+        p.input("amp_s",      0.0, 1.0, 0.0);
+        p.input("amp_r",      0.0, 1.0, 0.0);
+        p.input("mod_a",      0.0, 1.0, 0.0);
+        p.input("mod_d",      0.0, 1.0, 0.0);
+        p.input("mod_s",      0.0, 1.0, 0.0);
+        p.input("mod_r",      0.0, 1.0, 0.0);
+        p.input("pit_a",      0.0, 1.0, 0.0);
+        p.input("pit_d",      0.0, 1.0, 0.0);
+        p.input("pit_s",      0.0, 1.0, 0.0);
+        p.input("pit_r",      0.0, 1.0, 0.0);
 
         SlaughterParams {
-            osc1_waveform:      p.v(0),
-            osc1_pulse_width:   p.v(1),
-            osc1_detune_coarse: p.v(2),
-            osc1_detune_fine:   p.v(3),
-            osc1_volume:        p.v(4),
+            osc1_volume:        p.v(0),
+            osc2_volume:        p.v(1),
+            osc3_volume:        p.v(2),
+            noise_volume:       p.v(3),
+            master_level:       p.v(4),
+            osc1_waveform:      p.v(5),
+            osc2_waveform:      p.v(6),
+            osc3_waveform:      p.v(7),
+            osc1_pulse_width:   p.v(8),
+            osc2_pulse_width:   p.v(9),
+            osc3_pulse_width:   p.v(10),
+            osc1_detune_coarse: p.v(11),
+            osc2_detune_coarse: p.v(12),
+            osc3_detune_coarse: p.v(13),
+            osc1_detune_fine:   p.v(14),
+            osc2_detune_fine:   p.v(15),
+            osc3_detune_fine:   p.v(16),
+            filter_type:        p.v(17).into(),
+            filter_freq:        p.v(18),
+            filter_resonance:   p.v(19),
+            filter_mod_amt:     p.v(20),
+            amp_attack:         p.v(21),
+            amp_decay:          p.v(22),
+            amp_sustain:        p.v(23),
+            amp_release:        p.v(24),
+            mod_attack:         p.v(25),
+            mod_decay:          p.v(26),
+            mod_sustain:        p.v(27),
+            mod_release:        p.v(28),
+            pitch_attack:       p.v(29),
+            pitch_decay:        p.v(30),
+            pitch_sustain:      p.v(31),
+            pitch_release:      p.v(32),
             params:             p,
         }
     }
@@ -213,11 +298,39 @@ impl Op for SynthDevice<SlaughterVoice, SlaughterParams> {
     }
 
     fn exec(&mut self, t: f32, regs: &mut [f32]) {
-        self.params.osc1_waveform      = self.params.params.inputs[0].calc(regs);
-        self.params.osc1_pulse_width   = 1.0 - self.params.params.inputs[1].calc(regs);
-        self.params.osc1_detune_coarse = self.params.params.inputs[2].calc(regs);
-        self.params.osc1_detune_fine   = self.params.params.inputs[3].calc(regs);
-        self.params.osc1_volume        = self.params.params.inputs[4].calc(regs);
+        self.params.osc1_volume        = self.params.params.inputs[0].calc(regs);
+        self.params.osc2_volume        = self.params.params.inputs[1].calc(regs);
+        self.params.osc3_volume        = self.params.params.inputs[2].calc(regs);
+        self.params.noise_volume       = self.params.params.inputs[3].calc(regs);
+        self.params.master_level       = self.params.params.inputs[4].calc(regs);
+        self.params.osc1_waveform      = self.params.params.inputs[5].calc(regs);
+        self.params.osc2_waveform      = self.params.params.inputs[6].calc(regs);
+        self.params.osc3_waveform      = self.params.params.inputs[7].calc(regs);
+        self.params.osc1_pulse_width   = 1.0 - self.params.params.inputs[8].calc(regs);
+        self.params.osc2_pulse_width   = 1.0 - self.params.params.inputs[9].calc(regs);
+        self.params.osc3_pulse_width   = 1.0 - self.params.params.inputs[10].calc(regs);
+        self.params.osc1_detune_coarse = self.params.params.inputs[11].calc(regs);
+        self.params.osc2_detune_coarse = self.params.params.inputs[12].calc(regs);
+        self.params.osc3_detune_coarse = self.params.params.inputs[13].calc(regs);
+        self.params.osc1_detune_fine   = self.params.params.inputs[14].calc(regs);
+        self.params.osc2_detune_fine   = self.params.params.inputs[15].calc(regs);
+        self.params.osc3_detune_fine   = self.params.params.inputs[16].calc(regs);
+        self.params.filter_type        = self.params.params.inputs[17].calc(regs).into();
+        self.params.filter_freq        = self.params.params.inputs[18].calc(regs);
+        self.params.filter_resonance   = self.params.params.inputs[19].calc(regs);
+        self.params.filter_mod_amt     = self.params.params.inputs[20].calc(regs);
+        self.params.amp_attack         = self.params.params.inputs[21].calc(regs);
+        self.params.amp_decay          = self.params.params.inputs[22].calc(regs);
+        self.params.amp_sustain        = self.params.params.inputs[23].calc(regs);
+        self.params.amp_release        = self.params.params.inputs[24].calc(regs);
+        self.params.mod_attack         = self.params.params.inputs[25].calc(regs);
+        self.params.mod_decay          = self.params.params.inputs[26].calc(regs);
+        self.params.mod_sustain        = self.params.params.inputs[27].calc(regs);
+        self.params.mod_release        = self.params.params.inputs[28].calc(regs);
+        self.params.pitch_attack       = self.params.params.inputs[29].calc(regs);
+        self.params.pitch_decay        = self.params.params.inputs[30].calc(regs);
+        self.params.pitch_sustain      = self.params.params.inputs[31].calc(regs);
+        self.params.pitch_release      = self.params.params.inputs[32].calc(regs);
 
 //        let a = self.values[0].calc(regs);
 //        let p = self.values[1].calc(regs);
