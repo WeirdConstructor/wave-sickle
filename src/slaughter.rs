@@ -1,5 +1,6 @@
 use crate::parameters::*;
 use crate::synth_device::*;
+use crate::state_variable_filter::*;
 use crate::helpers::SignalIOParams;
 use crate::helpers;
 use wctr_signal_ops::signals::{OpIn, Op, OpPort, OpIOSpec, Event};
@@ -88,9 +89,9 @@ impl SlaughterParams {
         p.input("o2_detf",    0.0, 1.0, 0.0);
         p.input("o3_detf",    0.0, 1.0, 0.0);
         p.input("f_typ",      0.0, 1.0, 0.0);
-        p.input("f_freq",     0.0, 1.0, 0.0);
-        p.input("f_res",      0.0, 1.0, 0.0);
-        p.input("f_mod",      0.0, 1.0, 0.0);
+        p.input("f_freq",     0.0, 20000.0 - 20.0, 20000.0 - 20.0);
+        p.input("f_res",      0.0, 1.0, 1.0);
+        p.input("f_mod",      0.0, 1.0, 0.5);
         p.input("amp_a",      0.0, 1.0, 0.0);
         p.input("amp_d",      0.0, 1.0, 0.0);
         p.input("amp_s",      0.0, 1.0, 0.0);
@@ -203,10 +204,11 @@ impl Oscillator {
 
 #[derive(Debug, Clone, Copy)]
 pub struct SlaughterVoice {
-    osc1: Oscillator,
-    osc2: Oscillator,
-    osc3: Oscillator,
-    rg: helpers::RandGen,
+    osc1:   Oscillator,
+    osc2:   Oscillator,
+    osc3:   Oscillator,
+    filter: Filter,
+    rg:     helpers::RandGen,
 }
 
 impl SlaughterVoice {
@@ -220,9 +222,10 @@ impl Voice<SlaughterParams> for SlaughterVoice {
     fn new(sample_rate: f64) -> Self {
         let mut rg = helpers::RandGen::new_with_time();
         SlaughterVoice {
-            osc1: Oscillator::new(sample_rate, &mut rg),
-            osc2: Oscillator::new(sample_rate, &mut rg),
-            osc3: Oscillator::new(sample_rate, &mut rg),
+            osc1:   Oscillator::new(sample_rate, &mut rg),
+            osc2:   Oscillator::new(sample_rate, &mut rg),
+            osc3:   Oscillator::new(sample_rate, &mut rg),
+            filter: Filter::new(sample_rate),
             rg,
         }
     }
@@ -250,16 +253,24 @@ impl Voice<SlaughterParams> for SlaughterVoice {
 
         let base_note : f64 = data.get_note();
 
+        self.filter.set_type(params.filter_type);
+        self.filter.set_q(params.filter_resonance);
+
 //        let mut fi = false;
 //        let mut f : f32 = 0.0;
 //        let mut l : f32 = 0.0;
 
         for i in 0..sample_num {
-            let s =
+            self.filter.set_freq(
+                helpers::clamp(
+                    params.filter_freq, 0.0, 20000.0 - 20.0));
+            let mut s =
                 self.osc1.next(
                     base_note, params.osc1_waveform, params.osc1_pulse_width);
 //            if !fi { f = s; fi = true; }
 //            l = s;
+            let osc_mix = s;
+            s = self.filter.next(osc_mix);
             outputs[out_offs + (i * 2)]     = s as f32;
             outputs[out_offs + (i * 2) + 1] = s as f32;
             //d// println!("S {}", s);

@@ -1,6 +1,7 @@
 use crate::helpers::*;
 use crate::parameters::*;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Filter {
     sample_rate: f64,
     recalculate: bool,
