@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq, Clone, Copy)]
-enum EnvelopeState {
+pub enum EnvelopeState {
     Attack,
     Decay,
     Sustain,
@@ -8,7 +8,7 @@ enum EnvelopeState {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-struct Envelope {
+pub struct Envelope {
     pub state:         EnvelopeState,
     pub attack:        f32,
     pub decay:         f32,

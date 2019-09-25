@@ -1,9 +1,10 @@
 use crate::parameters::*;
 use crate::synth_device::*;
 use crate::state_variable_filter::*;
+use crate::envelope::*;
 use crate::helpers::SignalIOParams;
 use crate::helpers;
-use wctr_signal_ops::signals::{OpIn, Op, OpPort, OpIOSpec, Event};
+use wctr_signal_ops::signals::{OpIn, Op, OpIOSpec, Event};
 
 //use crate::parameters::*;
 
@@ -105,6 +106,17 @@ impl SlaughterParams {
         p.input("pit_s",      0.0, 1.0, 0.0);
         p.input("pit_r",      0.0, 1.0, 0.0);
 
+        p.input("v_uniso",    0.0, 1.0, 0.0);
+        p.input("v_detune",   0.0, 1.0, 0.0);
+        p.input("v_pan",      0.0, 1.0, 0.0);
+
+        p.input("vi_f",       0.0, 1.0, 0.0);
+        p.input("vi_amt",     0.0, 1.0, 0.0);
+
+        p.input("rist",       0.0, 1.0, 0.0);
+        p.input("v_mode",     0.0, 1.0, 0.0);
+        p.input("slide_t",    0.0, 1.0, 0.0);
+
         SlaughterParams {
             osc1_volume:        p.v(0),
             osc2_volume:        p.v(1),
@@ -204,38 +216,66 @@ impl Oscillator {
 
 #[derive(Debug, Clone, Copy)]
 pub struct SlaughterVoice {
-    osc1:   Oscillator,
-    osc2:   Oscillator,
-    osc3:   Oscillator,
-    filter: Filter,
-    rg:     helpers::RandGen,
+    sample_rate: f64,
+    osc1:       Oscillator,
+    osc2:       Oscillator,
+    osc3:       Oscillator,
+    filter:     Filter,
+    amp_env:    Envelope,
+    mod_env:    Envelope,
+    pitch_env:  Envelope,
+    rg:         helpers::RandGen,
 }
 
 impl SlaughterVoice {
-//    pub fn coarse_detune(detune: f32) -> f64 {
-//        (self.detune 
-//    }
-
+    pub fn coarse_detune(&self, detune: f32) -> f64 {
+        (detune as f64 * 24.99).floor()
+    }
 }
 
 impl Voice<SlaughterParams> for SlaughterVoice {
     fn new(sample_rate: f64) -> Self {
         let mut rg = helpers::RandGen::new_with_time();
         SlaughterVoice {
-            osc1:   Oscillator::new(sample_rate, &mut rg),
-            osc2:   Oscillator::new(sample_rate, &mut rg),
-            osc3:   Oscillator::new(sample_rate, &mut rg),
-            filter: Filter::new(sample_rate),
+            sample_rate,
+            osc1:       Oscillator::new(sample_rate, &mut rg),
+            osc2:       Oscillator::new(sample_rate, &mut rg),
+            osc3:       Oscillator::new(sample_rate, &mut rg),
+            filter:     Filter::new(sample_rate),
+            amp_env:    Envelope::new(sample_rate),
+            mod_env:    Envelope::new(sample_rate),
+            pitch_env:  Envelope::new(sample_rate),
             rg,
         }
     }
     fn note_on(&mut self, data: &mut VoiceData, params: &mut SlaughterParams, note: i32, velocity: i32, detune: f32, pan: f32) {
         println!("SLAUGHTER NOTE ON: {} => {}", note, helpers::note_to_freq(note.into()));
         data.note_on(note, 0, detune, pan);
+
+        self.amp_env.attack     = params.amp_attack;
+        self.amp_env.decay      = params.amp_decay;
+        self.amp_env.sustain    = params.amp_sustain;
+        self.amp_env.release    = params.amp_release;
+        self.amp_env.trigger();
+
+        self.mod_env.attack     = params.mod_attack;
+        self.mod_env.decay      = params.mod_decay;
+        self.mod_env.sustain    = params.mod_sustain;
+        self.mod_env.release    = params.mod_release;
+        self.mod_env.trigger();
+
+        self.pitch_env.attack     = params.pitch_attack;
+        self.pitch_env.decay      = params.pitch_decay;
+        self.pitch_env.sustain    = params.pitch_sustain;
+        self.pitch_env.release    = params.pitch_release;
+        self.pitch_env.trigger();
     }
     fn note_off(&mut self, data: &mut VoiceData, params: &mut SlaughterParams) {
         data.note_off();
         data.is_on = false; // TODO: REMOVE ME IF WE HAVE ENVELOPES!
+        self.amp_env.off();
+        self.mod_env.off();
+        self.pitch_env.off();
     }
     fn note_slide(&mut self, data: &mut VoiceData, params: &mut SlaughterParams, slide: f32, note: i32) {
         data.note_slide(slide, note);
@@ -253,8 +293,26 @@ impl Voice<SlaughterParams> for SlaughterVoice {
 
         let base_note : f64 = data.get_note();
 
+        //let vibrato_freq = data.vibrato_freq / self.sample_rate;
+
         self.filter.set_type(params.filter_type);
         self.filter.set_q(params.filter_resonance);
+
+        let amp       = -16.0 * helpers::volume_to_scalar(params.master_level);
+        let pan_left  = helpers::pan_to_scalar_left(data.pan);
+        let pan_right = helpers::pan_to_scalar_right(data.pan);
+
+        let osc1_detune = self.coarse_detune(params.osc1_detune_coarse)
+                          + (params.osc1_detune_fine as f64);
+        let osc2_detune = self.coarse_detune(params.osc2_detune_coarse)
+                          + (params.osc2_detune_fine as f64);
+        let osc3_detune = self.coarse_detune(params.osc3_detune_coarse)
+                          + (params.osc3_detune_fine as f64);
+
+        let osc1_volume_scalar = params.osc1_volume * params.osc1_volume;
+        let osc2_volume_scalar = params.osc2_volume * params.osc2_volume;
+        let osc3_volume_scalar = params.osc3_volume * params.osc3_volume;
+        let noise_scalar       = params.noise_volume * params.noise_volume;
 
 //        let mut fi = false;
 //        let mut f : f32 = 0.0;
@@ -267,14 +325,18 @@ impl Voice<SlaughterParams> for SlaughterVoice {
             let mut s =
                 self.osc1.next(
                     base_note, params.osc1_waveform, params.osc1_pulse_width);
+
 //            if !fi { f = s; fi = true; }
 //            l = s;
+
             let osc_mix = s;
             s = self.filter.next(osc_mix);
             outputs[out_offs + (i * 2)]     = s as f32;
             outputs[out_offs + (i * 2) + 1] = s as f32;
+
             //d// println!("S {}", s);
         }
+
 //        println!("OUT[{}]: {} => {}", base_note, f, l);
     }
 }
