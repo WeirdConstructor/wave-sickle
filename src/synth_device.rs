@@ -116,10 +116,8 @@ pub trait Voice<P>: Copy + Clone {
            outputs: &mut [f32]);
 }
 
-pub struct SynthDevice<V, P>
-    where V: Voice<P> {
-
-    sample_rate:    f64,
+pub struct SynthDeviceParams {
+    master_level:   f32,
     voices_unisono: i32,
     voices_detune:  f32,
     voices_pan:     f32,
@@ -128,6 +126,77 @@ pub struct SynthDevice<V, P>
     rise:           f32,
     slide:          f32,
     voice_mode:     VoiceMode,
+}
+
+impl SynthDeviceParams {
+    pub fn new() -> SynthDeviceParams {
+        SynthDeviceParams {
+            master_level:   0.0,
+            voices_unisono: 1,
+            voices_detune:  0.0,
+            voices_pan:     0.5,
+            vibrato_freq:   0.0,
+            vibrato_amount: 0.0,
+            rise:           0.0,
+            slide:          0.0,
+            voice_mode:     VoiceMode::Polyphonic,
+        }
+    }
+    pub fn new_with_params(p: &mut SignalIOParams) -> SynthDeviceParams {
+        let p = SynthDeviceParams::new();
+        p.init_params(p);
+        p
+    }
+
+    fn init_params(&mut self, p: &mut SignalIOParams) {
+        p.input("m_vol",      0.0, 1.0, 1.0);
+        p.input("v_uniso",    0.0, 1.0, 0.0);
+        p.input("v_detune",   0.0, 1.0, 0.0);
+        p.input("v_pan",      0.0, 1.0, 0.0);
+
+        p.input("vi_f",       0.0, 1.0, 0.0);
+        p.input("vi_amt",     0.0, 1.0, 0.0);
+        p.input("rise",       0.0, 1.0, 0.0);
+
+        p.input("slide_t",    0.0, 1.0, 0.0);
+        p.input("v_mode",     0.0, 1.0, 0.0);
+
+        self.master_level       = p.v(0);
+        self.voices_unisono     = p.v(1);
+        self.voices_detune      = p.v(2);
+        self.voices_pan         = p.v(3);
+        self.vibrato_freq       = p.v(4);
+        self.vibrato_amount     = p.v(5);
+        self.rise               = p.v(6);
+        self.slide              = p.v(7);
+        self.voice_mode         = p.v(8);
+    }
+
+    fn exec(&mut self, t: f32, regs: &mut [f32]) {
+        self.params.master_level       = self.params.params.inputs[4].calc(regs);
+        self.params.vibrato_freq       =
+            helpers::param_to_vibrato_freq(self.params.params.inputs[34].calc(regs));
+        self.params.vibrato_amount     = self.params.params.inputs[35].calc(regs);
+        self.params.rise               = self.params.params.inputs[36].calc(regs);
+//        let a = self.values[0].calc(regs);
+//        let p = self.values[1].calc(regs);
+//        let v = self.values[2].calc(regs);
+//        let f = self.values[3].calc(regs);
+//        regs[self.out] = a * (((f * t) + p).sin() + v);
+        //d// println!("OUT: {}, {}", regs[self.out], self.out);
+    }
+}
+
+// HOW DO I GET THIS SORTED OUT?
+// SynthDevice needs access to these params, and the voices too.
+// The only way to provide both access is an Rc/RefCell.
+// Or is it?
+// I could copy the params to the SynthDevice on trait/exec(),
+// then the access would be fast(er).
+pub struct SynthDevice<V, P>
+    where V: Voice<P> {
+
+    sample_rate:    f64,
     mono_active:    bool,
     note_log:       [i32; 128],
     note_count:     i32,
@@ -135,6 +204,7 @@ pub struct SynthDevice<V, P>
     voice_data:     [VoiceData; 256],
     voices:         [V; 256],
     events:         [Event; 256],
+    dev_params:     SynthDeviceParams,
 pub params:         P,
 }
 
@@ -174,14 +244,6 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
     pub fn new(sample_rate: f64, params: P) -> Self {
         SynthDevice {
             sample_rate,
-            voices_unisono: 1,
-            voices_detune:  0.0,
-            voices_pan:     0.5,
-            vibrato_freq:   helpers::param_to_vibrato_freq(0.0),
-            vibrato_amount: 0.0,
-            rise:           0.0,
-            slide:          0.0,
-            voice_mode:     VoiceMode::Polyphonic,
             mono_active:    false,
             note_count:     0,
             active_notes:   [false; 128],
@@ -189,6 +251,7 @@ impl<P, V: Voice<P>> SynthDevice<V, P> {
             voice_data:     [VoiceData::new(sample_rate); 256],
             voices:         [V::new(sample_rate); 256],
             events:         [Event::new(); 256],
+            dev_params:     SynthDeviceParams::new(),
             params,
         }
     }
