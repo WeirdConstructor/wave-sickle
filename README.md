@@ -9,6 +9,14 @@ and oscillators) as well as possible for me to Rust.
 The objective here is to use it as software synthesizer in my
 own demos.
 
+# Project Status
+
+- **Not maintained and incomplete**
+
+I was not able to complete the port at the time. And I've written
+a synthesier plugin myself since.
+Check out [Kickmess](https://github.com/WeirdConstructor/Kickmess).
+
 # License
 
 This project is licensed under the GNU General Public License Version 3 or

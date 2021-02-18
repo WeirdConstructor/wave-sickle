@@ -1,5 +1,5 @@
 #![macro_use]
-use wctr_signal_ops::signals::{OpIn, Op, OpPort, OpIOSpec, Event};
+use wctr_signal_ops::signals::{OpIn, OpPort};
 
 static FAST_COS_TAB_LOG2_SIZE : usize = 9;
 static FAST_COS_TAB_SIZE : usize      = 1 << FAST_COS_TAB_LOG2_SIZE; // =512

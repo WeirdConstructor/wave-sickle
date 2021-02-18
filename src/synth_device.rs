@@ -1,5 +1,8 @@
 use crate::parameters::*;
+use crate::helpers::SignalIOParams;
 use crate::helpers;
+
+const MAX_DEV_PARAMS : usize = 9;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum EventType {
@@ -143,9 +146,9 @@ impl SynthDeviceParams {
         }
     }
     pub fn new_with_params(p: &mut SignalIOParams) -> SynthDeviceParams {
-        let p = SynthDeviceParams::new();
-        p.init_params(p);
-        p
+        let mut dev_params = SynthDeviceParams::new();
+        dev_params.init_params(&mut p);
+        dev_params
     }
 
     fn init_params(&mut self, p: &mut SignalIOParams) {
@@ -162,14 +165,14 @@ impl SynthDeviceParams {
         p.input("v_mode",     0.0, 1.0, 0.0);
 
         self.master_level       = p.v(0);
-        self.voices_unisono     = p.v(1);
+        self.voices_unisono     = helpers::param_to_unisono(p.v(1));
         self.voices_detune      = p.v(2);
         self.voices_pan         = p.v(3);
-        self.vibrato_freq       = p.v(4);
+        self.vibrato_freq       = helpers::param_to_vibrato_freq(p.v(4));
         self.vibrato_amount     = p.v(5);
         self.rise               = p.v(6);
         self.slide              = p.v(7);
-        self.voice_mode         = p.v(8);
+        self.set_voice_mode(p.v(8).into());
     }
 
     fn exec(&mut self, t: f32, regs: &mut [f32]) {
@@ -178,6 +181,9 @@ impl SynthDeviceParams {
             helpers::param_to_vibrato_freq(self.params.params.inputs[34].calc(regs));
         self.params.vibrato_amount     = self.params.params.inputs[35].calc(regs);
         self.params.rise               = self.params.params.inputs[36].calc(regs);
+
+        // TODO calc the other params?!
+
 //        let a = self.values[0].calc(regs);
 //        let p = self.values[1].calc(regs);
 //        let v = self.values[2].calc(regs);
